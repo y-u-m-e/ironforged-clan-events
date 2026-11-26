@@ -121,7 +121,7 @@ public class EventTeamSyncService
         }
 
         String eventId = catalogService.resolveEventId(config);
-        String base = EventsApiService.resolveApiBase(config) + "/plugins/seasonal/teams";
+        String base = EventsApiService.API_BASE + "/plugins/seasonal/teams";
         HttpUrl url = HttpUrl.parse(base);
         if (url == null)
         {

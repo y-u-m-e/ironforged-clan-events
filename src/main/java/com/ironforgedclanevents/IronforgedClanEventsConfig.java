@@ -72,32 +72,7 @@ public interface IronforgedClanEventsConfig extends Config
         return 15;
     }
 
-    @ConfigItem(
-        keyName = "useDevApi",
-        name = "Use dev API",
-        description = "Use https://dev-api.ironforged.gg instead of production https://api.ironforged.gg for events, health, the seasonal event, and team roster sync",
-        section = eventsSection,
-        position = 2
-    )
-    default boolean useDevApi()
-    {
-        return false;
-    }
-
     // ========== Seasonal Event ==========
-
-    @ConfigItem(
-        keyName = "showSeasonalEvent",
-        name = "Show seasonal event",
-        description = "Show the current seasonal event and your team's board from api.ironforged.gg",
-        warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers",
-        section = seasonalEventPassphraseSection,
-        position = 0
-    )
-    default boolean showSeasonalEvent()
-    {
-        return false;
-    }
 
     @ConfigItem(
         keyName = "showSeasonalEventPassphrase",

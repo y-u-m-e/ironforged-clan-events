@@ -29,22 +29,7 @@ import java.util.List;
 public class EventsApiService
 {
     public static final String API_BASE = "https://api.ironforged.gg";
-    public static final String DEV_API_BASE = "https://dev-api.ironforged.gg";
 
-    /**
-     * Resolves the active plugin API origin from config.
-     */
-    public static String resolveApiBase(IronforgedClanEventsConfig config)
-    {
-        return config != null && config.useDevApi() ? DEV_API_BASE : API_BASE;
-    }
-
-    public String apiBase()
-    {
-        return resolveApiBase(config);
-    }
-
-    private final IronforgedClanEventsConfig config;
     private final OkHttpClient httpClient;
     private final Gson gson;
     /** Replaced wholesale (never mutated) so the EDT and executor can read it without locking. */
@@ -53,9 +38,8 @@ public class EventsApiService
     private volatile ApiStatus apiStatus = ApiStatus.unknown("Enable Load clan events to check API health");
 
     @Inject
-    public EventsApiService(IronforgedClanEventsConfig config, OkHttpClient httpClient, Gson gson)
+    public EventsApiService(OkHttpClient httpClient, Gson gson)
     {
-        this.config = config;
         this.httpClient = httpClient;
         this.gson = gson;
     }
@@ -71,7 +55,7 @@ public class EventsApiService
     public List<ClanEvent> fetchEvents()
     {
         HealthPayload health = fetchHealth();
-        String eventsUrl = apiBase() + "/plugins/events";
+        String eventsUrl = API_BASE + "/plugins/events";
         log.debug("Fetching events from: {}", eventsUrl);
 
         Request request = new Request.Builder()
@@ -117,7 +101,7 @@ public class EventsApiService
     private HealthPayload fetchHealth()
     {
         Request request = new Request.Builder()
-            .url(apiBase() + "/health")
+            .url(API_BASE + "/health")
             .header("User-Agent", "RuneLite-IronforgedClanEvents")
             .header("Accept", "application/json")
             .build();

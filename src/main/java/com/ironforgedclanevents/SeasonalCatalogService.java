@@ -19,7 +19,6 @@ import javax.inject.Singleton;
 @Singleton
 public class SeasonalCatalogService
 {
-    private final IronforgedClanEventsConfig config;
     private final OkHttpClient httpClient;
     private final Gson gson;
 
@@ -28,9 +27,8 @@ public class SeasonalCatalogService
     private volatile long lastFetchTime = 0;
 
     @Inject
-    public SeasonalCatalogService(IronforgedClanEventsConfig config, OkHttpClient httpClient, Gson gson)
+    public SeasonalCatalogService(OkHttpClient httpClient, Gson gson)
     {
-        this.config = config;
         this.httpClient = httpClient;
         this.gson = gson;
     }
@@ -38,7 +36,7 @@ public class SeasonalCatalogService
     public synchronized void refresh()
     {
         Request request = new Request.Builder()
-            .url(EventsApiService.resolveApiBase(config) + "/plugins/seasonal")
+            .url(EventsApiService.API_BASE + "/plugins/seasonal")
             .header("User-Agent", "RuneLite-IronforgedClanEvents")
             .header("Accept", "application/json")
             .get()

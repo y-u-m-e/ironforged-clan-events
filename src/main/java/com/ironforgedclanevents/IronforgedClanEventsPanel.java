@@ -98,8 +98,6 @@ public class IronforgedClanEventsPanel extends PluginPanel
     private final EventTeamSyncService eventTeamSyncService;
     private final Runnable refreshCallback;
     private final Runnable syncTeamsCallback;
-    private final Runnable openBoardCallback;
-    private JPanel seasonalEventCard;
 
     private JPanel eventsContainer;
     private JScrollPane eventsScrollPane;
@@ -133,8 +131,7 @@ public class IronforgedClanEventsPanel extends PluginPanel
         EventTeamService eventTeamService,
         EventTeamSyncService eventTeamSyncService,
         Runnable refreshCallback,
-        Runnable syncTeamsCallback,
-        Runnable openBoardCallback
+        Runnable syncTeamsCallback
     )
     {
         super(false);
@@ -146,7 +143,6 @@ public class IronforgedClanEventsPanel extends PluginPanel
         this.eventTeamSyncService = eventTeamSyncService;
         this.refreshCallback = refreshCallback;
         this.syncTeamsCallback = syncTeamsCallback;
-        this.openBoardCallback = openBoardCallback;
 
         setLayout(new BorderLayout());
         setBackground(BACKGROUND_COLOR);
@@ -202,14 +198,6 @@ public class IronforgedClanEventsPanel extends PluginPanel
         body.setBorder(new EmptyBorder(8, SIDE_PAD, 8, SIDE_PAD));
         body.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        seasonalEventCard = new JPanel();
-        seasonalEventCard.setLayout(new BoxLayout(seasonalEventCard, BoxLayout.Y_AXIS));
-        seasonalEventCard.setBackground(PANEL_COLOR);
-        seasonalEventCard.setBorder(new EmptyBorder(8, 8, 8, 8));
-        constrainSeasonalSection(seasonalEventCard);
-        seasonalEventCard.setVisible(false);
-        body.add(seasonalEventCard);
-        body.add(Box.createVerticalStrut(12));
         body.add(createMyTeamCard());
         body.add(Box.createVerticalStrut(12));
         body.add(createSeasonalTeamsSection());
@@ -246,93 +234,6 @@ public class IronforgedClanEventsPanel extends PluginPanel
         section.setAlignmentX(Component.LEFT_ALIGNMENT);
         section.setMinimumSize(new Dimension(0, 1));
         section.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-    }
-
-    /** EDT. Hidden when v is null (setting off or nothing fetched yet). */
-    public void updateSeasonalEventCard(SeasonalView v)
-    {
-        if (seasonalEventCard == null)
-        {
-            return;
-        }
-        seasonalEventCard.removeAll();
-        if (v == null || !config.showSeasonalEvent())
-        {
-            seasonalEventCard.setVisible(false);
-            return;
-        }
-        if (v.event == null)
-        {
-            seasonalEventCard.add(seasonalLabel("No seasonal event right now.", FontManager.getRunescapeSmallFont(), MUTED_TEXT));
-            seasonalEventCard.setVisible(true);
-            seasonalEventCard.revalidate();
-            seasonalEventCard.repaint();
-            return;
-        }
-        {
-            seasonalEventCard.add(seasonalLabel(v.event.name == null ? "Seasonal event" : v.event.name,
-                FontManager.getRunescapeBoldFont(), ACCENT_COLOR));
-            seasonalEventCard.add(seasonalLabel(seasonalTiming(v.event), FontManager.getRunescapeSmallFont(), MUTED_TEXT));
-        }
-        if (v.team != null && v.team.name != null)
-        {
-            JLabel team = seasonalLabel(v.team.name, FontManager.getRunescapeBoldFont(), TEXT_COLOR);
-            team.setBorder(new EmptyBorder(6, 0, 4, 0));
-            seasonalEventCard.add(team);
-        }
-        if (v.summary != null)
-        {
-            for (SeasonalView.Stat s : v.summary)
-            {
-                seasonalEventCard.add(seasonalLabel(s.label + ": " + s.value, FontManager.getRunescapeSmallFont(), TEXT_COLOR));
-            }
-        }
-        if (v.message != null && !v.message.isEmpty())
-        {
-            seasonalEventCard.add(seasonalLabel(v.message, FontManager.getRunescapeSmallFont(), MUTED_TEXT));
-        }
-        if (v.pieces != null && !v.pieces.isEmpty())
-        {
-            JButton open = new JButton("Open board");
-            open.setAlignmentX(Component.LEFT_ALIGNMENT);
-            open.addActionListener(e -> openBoardCallback.run());
-            seasonalEventCard.add(Box.createVerticalStrut(6));
-            seasonalEventCard.add(open);
-        }
-        seasonalEventCard.setVisible(true);
-        seasonalEventCard.revalidate();
-        seasonalEventCard.repaint();
-    }
-
-    private static JLabel seasonalLabel(String text, Font font, Color color)
-    {
-        JLabel l = new JLabel(text);
-        l.setFont(font);
-        l.setForeground(color);
-        l.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return l;
-    }
-
-    private static String seasonalTiming(SeasonalView.Event e)
-    {
-        try
-        {
-            if ("live".equals(e.status) && e.endsAt != null)
-            {
-                java.time.Duration d = java.time.Duration.between(Instant.now(), Instant.parse(e.endsAt));
-                return d.isNegative() ? "Ended" : d.toDays() + "d " + (d.toHours() % 24) + "h left";
-            }
-            if ("upcoming".equals(e.status) && e.startsAt != null)
-            {
-                return "Starts " + java.time.format.DateTimeFormatter.ofPattern("MMM d, HH:mm")
-                    .withZone(java.time.ZoneId.systemDefault()).format(Instant.parse(e.startsAt));
-            }
-        }
-        catch (java.time.DateTimeException ex)
-        {
-            // malformed date: fall through
-        }
-        return "Ended";
     }
 
     private JPanel createMyTeamCard()
