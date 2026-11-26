@@ -3,8 +3,8 @@ package com.ironforgedclanevents;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.ComponentConstants;
-import sh.yumekui.toolkit.overlay.WrappedText;
-import sh.yumekui.toolkit.overlay.WrappedTextComponent;
+import ws.yume.toolkit.overlay.WrappedText;
+import ws.yume.toolkit.overlay.WrappedTextComponent;
 
 import java.awt.Dimension;
 import java.awt.FontMetrics;
