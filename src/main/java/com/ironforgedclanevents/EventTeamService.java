@@ -84,6 +84,8 @@ public class EventTeamService
     private static final Pattern BROADCAST_PATTERN = Pattern.compile(
         "^(.+?) (?:received (?:a drop|a new collection log item|special loot from a raid):|has a funny feeling|feels something weird sneaking)");
 
+    private static final Pattern LEADING_ICONS = Pattern.compile("(?:<img=\\d+>)+");
+
     private final Client client;
     private final ClientThread clientThread;
     private final ChatIconManager chatIconManager;
@@ -680,12 +682,22 @@ public class EventTeamService
             }
         }
 
-        // Keep any non-ours markup (e.g. ironman), only swap our badge.
-        String newName = tag + strippedName;
+        String newName = insertBadge(strippedName, tag);
         if (!newName.equals(name))
         {
             node.setName(newName);
         }
+    }
+
+    /**
+     * Puts our badge after the game's leading icons (ironman, etc.), never in front of them:
+     * the clan chat script reads the first icon, and a badge there replaced the clan rank icon.
+     */
+    static String insertBadge(String name, String tag)
+    {
+        Matcher leading = LEADING_ICONS.matcher(name);
+        int end = leading.lookingAt() ? leading.end() : 0;
+        return name.substring(0, end) + tag + name.substring(end);
     }
 
     private void tagBroadcastNode(MessageNode node)
