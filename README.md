@@ -66,6 +66,8 @@ https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts
 - **[Friend Notes](https://github.com/runelite/runelite/tree/master/runelite-client/src/main/java/net/runelite/client/plugins/friendnotes)**,
   part of RuneLite (BSD-2-Clause): the friends and clan list icon layout, a 14×12 icon after the
   name with the row shifted to make room.
+- **[Clan Events](https://github.com/cmsu224/clan-events)** by Maz, the Elysium clan's plugin
+  (BSD-2-Clause): the on-screen event passphrase box.
 - Clan icon sprites are Old School RuneScape assets, taken from the
   [Old School RuneScape Wiki](https://oldschool.runescape.wiki/).
 
