@@ -323,23 +323,23 @@ public class EventTeamSyncService
         {
             team.name = text(obj, "label");
         }
-            String color = text(obj, "color");
-            EventTeamIconFactory.TeamPalette palette = EventTeamIconFactory.TeamPalette.fromKey(color);
-            if (palette == null && color.matches("(?i)^#[0-9A-F]{6}$"))
+        String color = text(obj, "color");
+        EventTeamIconFactory.TeamPalette palette = EventTeamIconFactory.TeamPalette.fromKey(color);
+        if (palette == null && color.matches("(?i)^#[0-9A-F]{6}$"))
+        {
+            try
             {
-                try
-                {
-                    palette = EventTeamIconFactory.TeamPalette.nearest(java.awt.Color.decode(color));
-                }
-                catch (NumberFormatException ignored)
-                {
-                    palette = null;
-                }
+                palette = EventTeamIconFactory.TeamPalette.nearest(java.awt.Color.decode(color));
             }
-            if (palette != null)
+            catch (NumberFormatException ignored)
             {
-                team.colorKey = palette.getKey();
+                palette = null;
             }
+        }
+        if (palette != null)
+        {
+            team.colorKey = palette.getKey();
+        }
 
         JsonArray members = null;
         if (obj.has("members") && obj.get("members").isJsonArray())
