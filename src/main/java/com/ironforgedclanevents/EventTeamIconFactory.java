@@ -162,14 +162,20 @@ final class EventTeamIconFactory
 
     /**
      * 14×12 slot for friends/clan lists (same dimensions as Friend Notes) holding the chat-size
-     * badge, offset by a gap after the name, with its bottom row left clear so it lines up with
-     * the text the way the chat badge does instead of standing taller than the name.
+     * badge, offset by a gap after the name. Its visible pixels end on the slot's bottom row,
+     * like the Friend Notes icon (which fills the slot); top-aligned it rode above the text.
      */
     static BufferedImage loadFriendsListBadge(TeamPalette palette)
     {
+        BufferedImage badge = loadBadge(palette);
+        int bottom = badge.getHeight() - 1;
+        while (bottom > 0 && rowClear(badge, bottom))
+        {
+            bottom--;
+        }
         BufferedImage slot = new BufferedImage(FRIENDS_ICON_WIDTH, FRIENDS_ICON_HEIGHT, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = slot.createGraphics();
-        g.drawImage(loadBadge(palette), FRIENDS_ICON_GAP, 0, null);
+        g.drawImage(badge, FRIENDS_ICON_GAP, FRIENDS_ICON_HEIGHT - 1 - bottom, null);
         g.dispose();
         return slot;
     }
@@ -195,6 +201,18 @@ final class EventTeamIconFactory
             g.dispose();
             return fallback;
         }
+    }
+
+    private static boolean rowClear(BufferedImage img, int y)
+    {
+        for (int x = 0; x < img.getWidth(); x++)
+        {
+            if ((img.getRGB(x, y) >>> 24) != 0)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static BufferedImage toArgb(BufferedImage src)

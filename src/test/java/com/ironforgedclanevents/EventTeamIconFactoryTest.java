@@ -52,10 +52,13 @@ public class EventTeamIconFactoryTest
     }
 
     @Test
-    public void friendsBadgeSitsOneRowAboveTheBaseline()
+    public void friendsBadgeSitsOnTheSlotBottomLikeFriendNotes()
     {
-        BufferedImage img = EventTeamIconFactory.loadFriendsListBadge(EventTeamIconFactory.TeamPalette.RED);
-        assertEquals(true, rowClear(img, img.getHeight() - 1));
+        for (EventTeamIconFactory.TeamPalette p : EventTeamIconFactory.TeamPalette.values())
+        {
+            BufferedImage img = EventTeamIconFactory.loadFriendsListBadge(p);
+            assertEquals(p.name(), false, rowClear(img, img.getHeight() - 1));
+        }
     }
 
     @Test
