@@ -12,7 +12,7 @@ Plugin drop submit was removed on 2026-11-08. It can be restored from git tag `s
 - **Side panel timeline** — Day-grouped events with live / today / future / past color tones
 - **Seasonal Event Passphrase** — Optional on-screen passphrase (and optional local date/time), movable and resizable. Prefers the API value; config is fallback.
 - **Your team** — The Seasonal tab shows the event, your team and its badge, and which teammates are online
-- **Event teams** — Paste RSNs per team in the Seasonal tab, or opt in to **Sync team roster from API** (`GET /plugins/seasonal/teams`). Rostered players get their team's clan icon in chat, PMs, broadcasts, friends list, clan list and overhead (overhead icons are hidden in the Wilderness and on PvP worlds)
+- **Event teams** — Paste RSNs per team in the Seasonal tab, or opt in to **Sync team roster from API** (`GET /plugins/seasonal/teams`). Rostered players get their team's clan icon in chat, PMs, broadcasts, friends list, clan list and overhead (overhead icons are hidden in the Wilderness, on PvP worlds and in PvP minigames)
 - **Local times** — API timestamps are UTC and shown in your local timezone
 
 ---
@@ -24,7 +24,7 @@ Plugin drop submit was removed on 2026-11-08. It can be restored from git tag `s
 3. Optional: set **Seasonal Event ID** and **Seasonal Event Passphrase** under **Seasonal Event**
 4. Optional: under **Teams**, enable **Sync team roster from API**
 
-No Google Sheet ID is required. The official Iron Forged calendar is loaded from the public plugins API.
+Three settings contact `https://api.ironforged.gg`, and each sends your IP address to it: **Load clan events**, **Show Seasonal Event Passphrase** and **Sync team roster from API**. All three are off by default.
 
 ---
 

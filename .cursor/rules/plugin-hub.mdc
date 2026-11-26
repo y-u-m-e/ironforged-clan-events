@@ -14,7 +14,7 @@ Follow `AGENTS.md` in this repo (from RuneLite’s example-plugin). Hard constra
 - `new Gson()` — always `@Inject Gson`
 - `HttpURLConnection` / `java.net.http` — always `@Inject OkHttpClient`
 - `Desktop.browse` — use `LinkBrowser`
-- Dead/unused classes, seasonal/reporter stacks, or unused `data/` in the JAR
+- Dead/unused classes or unused `data/` in the JAR
 - Oversized PNGs (keep nav/hub icons ≤48px; prefer 16–32 for nav)
 - `META-INF/services/net.runelite.client.plugins.Plugin`
 - New third-party Gradle deps without hub verification metadata (avoid unless required)
@@ -27,7 +27,7 @@ Any feature that contacts a non-RuneLite server must be:
 2. Annotated with exact warning:  
    `"This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers"`
 
-Google Sheets uses `enableGoogleSheets` for this. Do not fetch when it is false.
+`enableEventsFeed`, `showSeasonalEventPassphrase` and `enableTeamRosterSync` gate all HTTP. Do not fetch when the matching toggle is false.
 
 ## Config
 
