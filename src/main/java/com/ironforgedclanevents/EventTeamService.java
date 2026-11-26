@@ -678,7 +678,9 @@ public class EventTeamService
             int iconIndex = iconIndexForTeam(team);
             if (iconIndex != -1)
             {
-                tag = "<img=" + iconIndex + "> ";
+                // No trailing space: the clan chat script strips tags and looks the sender up by name,
+                // so " yume" finds no member and the rank icon falls back to the wrong one.
+                tag = "<img=" + iconIndex + ">";
             }
         }
 
@@ -690,8 +692,7 @@ public class EventTeamService
     }
 
     /**
-     * Puts our badge after the game's leading icons (ironman, etc.), never in front of them:
-     * the clan chat script reads the first icon, and a badge there replaced the clan rank icon.
+     * Puts our badge after the game's leading icons (ironman, etc.) so it sits next to the name.
      */
     static String insertBadge(String name, String tag)
     {

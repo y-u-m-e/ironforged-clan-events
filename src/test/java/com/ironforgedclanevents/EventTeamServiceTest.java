@@ -16,10 +16,10 @@ public class EventTeamServiceTest
     @Test
     public void badgeGoesAfterTheGamesOwnIcons()
     {
-        // The clan chat script reads the leading icon (ironman etc.); a badge in front breaks the rank icon.
-        assertEquals("<img=3><img=90> yume", EventTeamService.insertBadge("<img=3>yume", "<img=90> "));
-        assertEquals("<img=3><img=7><img=90> yume", EventTeamService.insertBadge("<img=3><img=7>yume", "<img=90> "));
-        assertEquals("<img=90> yume", EventTeamService.insertBadge("yume", "<img=90> "));
+        // No space after the badge: the clan chat script looks the sender up by tag-stripped name.
+        assertEquals("<img=3><img=90>yume", EventTeamService.insertBadge("<img=3>yume", "<img=90>"));
+        assertEquals("<img=3><img=7><img=90>yume", EventTeamService.insertBadge("<img=3><img=7>yume", "<img=90>"));
+        assertEquals("<img=90>yume", EventTeamService.insertBadge("yume", "<img=90>"));
         assertEquals("<img=3>yume", EventTeamService.insertBadge("<img=3>yume", ""));
     }
 
