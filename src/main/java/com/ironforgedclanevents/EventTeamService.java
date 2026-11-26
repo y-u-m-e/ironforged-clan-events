@@ -71,6 +71,16 @@ public class EventTeamService
         ChatMessageType.CLAN_GIM_MESSAGE
     );
 
+    /** PvP and Deadman worlds (WorldType.isPvpWorld), plus high-risk, Bounty Hunter, PvP Arena and LMS worlds. */
+    private static final Set<WorldType> PVP_WORLD_TYPES = EnumSet.of(
+        WorldType.PVP,
+        WorldType.DEADMAN,
+        WorldType.HIGH_RISK,
+        WorldType.BOUNTY,
+        WorldType.PVP_ARENA,
+        WorldType.LAST_MAN_STANDING
+    );
+
     private static final Pattern BROADCAST_PATTERN = Pattern.compile(
         "^(.+?) (?:received (?:a drop|a new collection log item|special loot from a raid):|has a funny feeling|feels something weird sneaking)");
 
@@ -100,8 +110,8 @@ public class EventTeamService
     private Integer currentlyLayoutingTeam;
     private volatile boolean active;
     /**
-     * Overhead badges are hidden in the Wilderness / on PvP worlds so they cannot work as
-     * PvP clan-opponent identification (a Plugin Hub restriction). Updated once per tick.
+     * Overhead badges are hidden in every PvP context so they cannot work as PvP clan-opponent
+     * identification (a Plugin Hub restriction). Updated once per tick.
      */
     private volatile boolean inPvpArea;
 
@@ -151,8 +161,27 @@ public class EventTeamService
 
     public void onGameTick()
     {
-        inPvpArea = WorldType.isPvpWorld(client.getWorldType())
-            || client.getVarbitValue(VarbitID.INSIDE_WILDERNESS) == 1;
+        inPvpArea = !Collections.disjoint(client.getWorldType(), PVP_WORLD_TYPES)
+            // Wilderness.
+            || client.getVarbitValue(VarbitID.INSIDE_WILDERNESS) == 1
+            // Any area with player attack options: PvP Arena fights, Clan Wars FFA portals, PvP worlds
+            // (RuneLite's Player Indicators uses the same check for "PvP").
+            || client.getVarbitValue(VarbitID.PVP_AREA_CLIENT) == 1
+            // Last Man Standing (BR_ = battle royale; RuneLite's Prayer plugin uses it for LMS).
+            || client.getVarbitValue(VarbitID.BR_INGAME) != 0
+            // Soul Wars: a team is assigned while in the lobby or a game.
+            || client.getVarbitValue(VarbitID.SOUL_WARS_TEAM) != 0
+            // Castle Wars and Clan Wars have no team varbit; their in-game HUDs are loaded only during a game.
+            || isLoaded(InterfaceID.CastlewarsStatusOverlaySaradomin.UNIVERSE)
+            || isLoaded(InterfaceID.CastlewarsStatusOverlayZamorak.UNIVERSE)
+            || isLoaded(InterfaceID.ClanwarsHud.UNIVERSE)
+            || isLoaded(InterfaceID.ClanwarsFfa.UNIVERSE);
+    }
+
+    private boolean isLoaded(int componentId)
+    {
+        Widget widget = client.getWidget(componentId);
+        return widget != null && !widget.isHidden();
     }
 
     public boolean isInPvpArea()
