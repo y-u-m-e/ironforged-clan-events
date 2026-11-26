@@ -38,9 +38,16 @@ public interface IronforgedClanEventsConfig extends Config
     String panelSection = "panelSection";
 
     @ConfigSection(
+        name = "Overlays",
+        description = "Boxes drawn on the game screen",
+        position = 3
+    )
+    String overlaySection = "overlaySection";
+
+    @ConfigSection(
         name = "Teams",
         description = "Colored team badges in chat, friends/clan lists, and overhead names",
-        position = 3
+        position = 4
     )
     String teamsSection = "teamsSection";
 
@@ -178,8 +185,8 @@ public interface IronforgedClanEventsConfig extends Config
         keyName = "showOverlay",
         name = "Show next event overlay",
         description = "Display the next event (and the live one) on the game screen. Needs Load clan events; drag to reposition",
-        section = panelSection,
-        position = 2
+        section = overlaySection,
+        position = 0
     )
     default boolean showOverlay()
     {
