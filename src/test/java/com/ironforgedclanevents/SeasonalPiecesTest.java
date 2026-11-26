@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;

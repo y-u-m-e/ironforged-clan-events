@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -30,7 +30,7 @@ public class EventTeamSyncService
     /** Contract caps the payload at 16 teams; slots past MAX_TEAMS are dropped when applied. */
     private static final int MAX_API_TEAMS = 16;
 
-    private final EventListConfig config;
+    private final IronforgedClanEventsConfig config;
     private final ConfigManager configManager;
     private final SeasonalCatalogService catalogService;
     private final OkHttpClient httpClient;
@@ -47,7 +47,7 @@ public class EventTeamSyncService
 
     @Inject
     EventTeamSyncService(
-        EventListConfig config,
+        IronforgedClanEventsConfig config,
         ConfigManager configManager,
         SeasonalCatalogService catalogService,
         OkHttpClient httpClient,
@@ -256,7 +256,7 @@ public class EventTeamSyncService
 
         // Highest occupied slot, not team count: slots may be sparse.
         configManager.setConfiguration(
-            EventListConfig.CONFIG_GROUP, "teamCount", Collections.max(bySlot.keySet()));
+            IronforgedClanEventsConfig.CONFIG_GROUP, "teamCount", Collections.max(bySlot.keySet()));
 
         for (int slot = 1; slot <= EventTeamService.MAX_TEAMS; slot++)
         {
@@ -264,26 +264,26 @@ public class EventTeamSyncService
             if (team == null)
             {
                 // Clear unoccupied slots so stale RSNs do not linger.
-                configManager.unsetConfiguration(EventListConfig.CONFIG_GROUP, EventTeamService.teamNamesKey(slot));
-                configManager.unsetConfiguration(EventListConfig.CONFIG_GROUP, EventTeamService.teamLabelKey(slot));
+                configManager.unsetConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, EventTeamService.teamNamesKey(slot));
+                configManager.unsetConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, EventTeamService.teamLabelKey(slot));
                 continue;
             }
 
             configManager.setConfiguration(
-                EventListConfig.CONFIG_GROUP,
+                IronforgedClanEventsConfig.CONFIG_GROUP,
                 EventTeamService.teamNamesKey(slot),
                 String.join("\n", team.members));
             if (team.colorKey != null && !team.colorKey.isEmpty())
             {
                 configManager.setConfiguration(
-                    EventListConfig.CONFIG_GROUP,
+                    IronforgedClanEventsConfig.CONFIG_GROUP,
                     EventTeamService.teamColorKey(slot),
                     team.colorKey);
             }
             if (team.name != null && !team.name.isEmpty())
             {
                 configManager.setConfiguration(
-                    EventListConfig.CONFIG_GROUP,
+                    IronforgedClanEventsConfig.CONFIG_GROUP,
                     EventTeamService.teamLabelKey(slot),
                     team.name);
             }

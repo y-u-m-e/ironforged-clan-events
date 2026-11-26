@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatLineBuffer;
@@ -78,7 +78,7 @@ public class EventTeamService
     private final ClientThread clientThread;
     private final ChatIconManager chatIconManager;
     private final ConfigManager configManager;
-    private final EventListConfig config;
+    private final IronforgedClanEventsConfig config;
 
     // Static because ChatIconManager has no unregister: a plugin restart in the same JVM
     // must reuse the ids it already registered instead of leaking new icon slots.
@@ -111,7 +111,7 @@ public class EventTeamService
         ClientThread clientThread,
         ChatIconManager chatIconManager,
         ConfigManager configManager,
-        EventListConfig config
+        IronforgedClanEventsConfig config
     )
     {
         this.client = client;
@@ -198,7 +198,7 @@ public class EventTeamService
 
     public EventTeamIconFactory.TeamPalette teamPalette(int team)
     {
-        String stored = configManager.getConfiguration(EventListConfig.CONFIG_GROUP, teamColorKey(team));
+        String stored = configManager.getConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, teamColorKey(team));
         if (stored != null && !stored.isEmpty())
         {
             EventTeamIconFactory.TeamPalette byKey = EventTeamIconFactory.TeamPalette.fromKey(stored);
@@ -242,7 +242,7 @@ public class EventTeamService
         EventTeamIconFactory.TeamPalette p = palette == null
             ? EventTeamIconFactory.defaultPalette(team)
             : palette;
-        configManager.setConfiguration(EventListConfig.CONFIG_GROUP, teamColorKey(team), p.getKey());
+        configManager.setConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, teamColorKey(team), p.getKey());
     }
 
     public void cycleTeamPalette(int team)
@@ -463,7 +463,7 @@ public class EventTeamService
         int teamCount = Math.min(Math.max(config.teamCount(), 1), MAX_TEAMS);
         for (int team = 1; team <= teamCount; team++)
         {
-            String names = configManager.getConfiguration(EventListConfig.CONFIG_GROUP, teamNamesKey(team));
+            String names = configManager.getConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, teamNamesKey(team));
             if (names == null || names.isEmpty())
             {
                 continue;

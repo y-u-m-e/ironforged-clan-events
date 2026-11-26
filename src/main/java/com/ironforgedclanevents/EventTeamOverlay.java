@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import net.runelite.api.Client;
 import net.runelite.api.Player;
@@ -24,10 +24,10 @@ class EventTeamOverlay extends Overlay
 
     private final Client client;
     private final EventTeamService teamService;
-    private final EventListConfig config;
+    private final IronforgedClanEventsConfig config;
 
     @Inject
-    EventTeamOverlay(Client client, EventTeamService teamService, EventListConfig config)
+    EventTeamOverlay(Client client, EventTeamService teamService, IronforgedClanEventsConfig config)
     {
         this.client = client;
         this.teamService = teamService;

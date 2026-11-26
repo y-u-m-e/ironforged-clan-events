@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -23,10 +23,10 @@ public class SeasonalEventPassphraseOverlay extends OverlayPanel
     private static final int VERTICAL_PAD = 8;
     private static final int BETWEEN_PAD = 12;
 
-    private final EventListConfig config;
+    private final IronforgedClanEventsConfig config;
     private final SeasonalCatalogService catalogService;
 
-    public SeasonalEventPassphraseOverlay(EventListConfig config, SeasonalCatalogService catalogService)
+    public SeasonalEventPassphraseOverlay(IronforgedClanEventsConfig config, SeasonalCatalogService catalogService)
     {
         this.config = config;
         this.catalogService = catalogService;

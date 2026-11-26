@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 /**
  * Snapshot of Iron Forged API health + last events-feed metadata for UI.

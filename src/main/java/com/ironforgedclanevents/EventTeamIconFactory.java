@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.util.ImageUtil;

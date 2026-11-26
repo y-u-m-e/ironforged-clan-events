@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import com.google.gson.Gson;
 import okhttp3.MediaType;
@@ -64,7 +64,7 @@ public class SeasonalViewServiceTest
                 .code(Integer.parseInt(r[0])).message("x")
                 .body(ResponseBody.create(MediaType.parse("application/json"), r[1])).build();
         }).build();
-        SeasonalViewService svc = new SeasonalViewService(new EventListConfig() {}, client, new Gson());
+        SeasonalViewService svc = new SeasonalViewService(new IronforgedClanEventsConfig() {}, client, new Gson());
 
         svc.refresh("Y u m e");
         SeasonalView good = svc.getView();

@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -34,7 +34,7 @@ public class EventsApiService
     /**
      * Resolves the active plugin API origin from config.
      */
-    public static String resolveApiBase(EventListConfig config)
+    public static String resolveApiBase(IronforgedClanEventsConfig config)
     {
         return config != null && config.useDevApi() ? DEV_API_BASE : API_BASE;
     }
@@ -44,7 +44,7 @@ public class EventsApiService
         return resolveApiBase(config);
     }
 
-    private final EventListConfig config;
+    private final IronforgedClanEventsConfig config;
     private final OkHttpClient httpClient;
     private final Gson gson;
     /** Replaced wholesale (never mutated) so the EDT and executor can read it without locking. */
@@ -53,7 +53,7 @@ public class EventsApiService
     private volatile ApiStatus apiStatus = ApiStatus.unknown("Enable Load clan events to check API health");
 
     @Inject
-    public EventsApiService(EventListConfig config, OkHttpClient httpClient, Gson gson)
+    public EventsApiService(IronforgedClanEventsConfig config, OkHttpClient httpClient, Gson gson)
     {
         this.config = config;
         this.httpClient = httpClient;

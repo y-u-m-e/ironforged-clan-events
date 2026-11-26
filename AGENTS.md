@@ -1,6 +1,6 @@
 # Ironforged Clan Events
 
-This repository’s display name is **Ironforged Clan Events** (`com.claneventlist`).
+This repository’s display name is **Ironforged Clan Events** (`com.ironforgedclanevents`).
 Project-specific Hub checklist: `.cursor/rules/plugin-hub.mdc`.
 
 Also copy this file’s rules when changing networking, config, packaging, or overlays.

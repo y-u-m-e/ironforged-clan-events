@@ -1,6 +1,6 @@
-# Ironforged Clan Events (Event-List)
+# Ironforged Clan Events (ironforged-clan-events)
 
-RuneLite plugin (`com.claneventlist`). Hub checklist lives in `AGENTS.md` and `.cursor/rules/plugin-hub.mdc` — read those before editing.
+RuneLite plugin (`com.ironforgedclanevents`). Hub checklist lives in `AGENTS.md` and `.cursor/rules/plugin-hub.mdc` — read those before editing.
 
 - Java 11. OkHttp + injected Gson. No client-thread IO. No reflection / ProcessBuilder.
 - Third-party HTTP (yume-api, Sheets) must stay opt-in with the Hub IP warning.

@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
@@ -35,7 +35,7 @@ import java.util.Objects;
  * Side panel: vertical timeline rail for Ironforged clan events.
  */
 @Slf4j
-public class EventListPanel extends PluginPanel
+public class IronforgedClanEventsPanel extends PluginPanel
 {
     private static final Color BACKGROUND_COLOR = ColorScheme.DARK_GRAY_COLOR;
     private static final Color PANEL_COLOR = ColorScheme.DARKER_GRAY_COLOR;
@@ -91,7 +91,7 @@ public class EventListPanel extends PluginPanel
     private static final int SIDE_PAD = 6;
     private static final int MAX_DESC_LENGTH = 280;
 
-    private final EventListConfig config;
+    private final IronforgedClanEventsConfig config;
     private final ConfigManager configManager;
     private final EventsApiService eventsApiService;
     private final EventTeamService eventTeamService;
@@ -126,8 +126,8 @@ public class EventListPanel extends PluginPanel
     /** Viewport width used when rows were last built; triggers rebuild when it changes. */
     private int laidOutViewportWidth;
 
-    public EventListPanel(
-        EventListConfig config,
+    public IronforgedClanEventsPanel(
+        IronforgedClanEventsConfig config,
         ConfigManager configManager,
         EventsApiService eventsApiService,
         EventTeamService eventTeamService,
@@ -402,13 +402,13 @@ public class EventListPanel extends PluginPanel
     private List<String> teamMembers(int team)
     {
         return EventTeamService.splitNames(configManager.getConfiguration(
-            EventListConfig.CONFIG_GROUP, EventTeamService.teamNamesKey(team)));
+            IronforgedClanEventsConfig.CONFIG_GROUP, EventTeamService.teamNamesKey(team)));
     }
 
     private String teamTitle(int team)
     {
         String labelName = configManager.getConfiguration(
-            EventListConfig.CONFIG_GROUP, EventTeamService.teamLabelKey(team));
+            IronforgedClanEventsConfig.CONFIG_GROUP, EventTeamService.teamLabelKey(team));
         return (labelName == null || labelName.trim().isEmpty()) ? ("Team " + team) : labelName.trim();
     }
 
@@ -563,7 +563,7 @@ public class EventListPanel extends PluginPanel
         {
             int value = (Integer) teamCountSpinner.getValue();
             // ConfigChanged("teamCount") rebuilds the team sections.
-            configManager.setConfiguration(EventListConfig.CONFIG_GROUP, "teamCount", value);
+            configManager.setConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, "teamCount", value);
         });
         countRow.add(teamCountSpinner);
         body.add(countRow);
@@ -803,7 +803,7 @@ public class EventListPanel extends PluginPanel
             {
                 JTextArea area = entry.getValue();
                 String saved = Objects.toString(configManager.getConfiguration(
-                    EventListConfig.CONFIG_GROUP, EventTeamService.teamNamesKey(entry.getKey())), "");
+                    IronforgedClanEventsConfig.CONFIG_GROUP, EventTeamService.teamNamesKey(entry.getKey())), "");
                 if (!area.isFocusOwner() && !saved.equals(area.getText()))
                 {
                     area.setText(saved);
@@ -840,7 +840,7 @@ public class EventListPanel extends PluginPanel
             BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
             new EmptyBorder(4, 4, 4, 4)));
 
-        String saved = configManager.getConfiguration(EventListConfig.CONFIG_GROUP, EventTeamService.teamNamesKey(team));
+        String saved = configManager.getConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, EventTeamService.teamNamesKey(team));
         if (saved != null)
         {
             namesArea.setText(saved);
@@ -852,7 +852,7 @@ public class EventListPanel extends PluginPanel
 
         Timer saveTimer = new Timer(500, e ->
             configManager.setConfiguration(
-                EventListConfig.CONFIG_GROUP,
+                IronforgedClanEventsConfig.CONFIG_GROUP,
                 EventTeamService.teamNamesKey(team),
                 namesArea.getText()));
         saveTimer.setRepeats(false);
@@ -900,7 +900,7 @@ public class EventListPanel extends PluginPanel
         int total = EventTeamService.splitNames(namesArea.getText()).size();
         int shownOnline = Math.min(online, total);
         String labelName = configManager.getConfiguration(
-            EventListConfig.CONFIG_GROUP, EventTeamService.teamLabelKey(team));
+            IronforgedClanEventsConfig.CONFIG_GROUP, EventTeamService.teamLabelKey(team));
         String title = (labelName == null || labelName.trim().isEmpty())
             ? ("Team " + team)
             : labelName.trim();

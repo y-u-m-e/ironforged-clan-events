@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
@@ -43,13 +43,13 @@ import java.util.concurrent.ScheduledExecutorService;
     description = "Display Iron Forged clan events from api.ironforged.gg in a side panel, with your seasonal team, an optional Seasonal Event Passphrase overlay, and team badges",
     tags = {"clan", "events", "calendar", "schedule", "seasonal", "ironforged", "teams"}
 )
-public class EventListPlugin extends Plugin
+public class IronforgedClanEventsPlugin extends Plugin
 {
     private static final String ICON_PATH = "ironforged_icon.png";
     private static final int NAV_ICON_SIZE = 16;
 
     @Inject
-    private EventListConfig config;
+    private IronforgedClanEventsConfig config;
 
     @Inject
     private ConfigManager configManager;
@@ -93,7 +93,7 @@ public class EventListPlugin extends Plugin
     /** Created and disposed on the EDT; read from the scheduler thread only for isVisible(). */
     private volatile SeasonalBoardWindow boardWindow;
     private SeasonalEventPassphraseOverlay passphraseOverlay;
-    private EventListPanel panel;
+    private IronforgedClanEventsPanel panel;
     private NavigationButton navButton;
     private boolean initialized = false;
 
@@ -104,13 +104,13 @@ public class EventListPlugin extends Plugin
 
         migrateLegacyBingoConfig();
         // Free-text host was replaced by the Use dev API toggle.
-        configManager.unsetConfiguration(EventListConfig.CONFIG_GROUP, "pluginApiBase");
+        configManager.unsetConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, "pluginApiBase");
 
         passphraseOverlay = new SeasonalEventPassphraseOverlay(config, seasonalCatalogService);
         overlayManager.add(passphraseOverlay);
         overlayManager.add(eventTeamOverlay);
 
-        panel = new EventListPanel(
+        panel = new IronforgedClanEventsPanel(
             config,
             configManager,
             eventsApiService,
@@ -277,7 +277,7 @@ public class EventListPlugin extends Plugin
     @Subscribe
     public void onConfigChanged(ConfigChanged event)
     {
-        if (!event.getGroup().equals(EventListConfig.CONFIG_GROUP))
+        if (!event.getGroup().equals(IronforgedClanEventsConfig.CONFIG_GROUP))
         {
             return;
         }
@@ -669,24 +669,24 @@ public class EventListPlugin extends Plugin
 
     private void migrateConfigKey(String oldKey, String newKey)
     {
-        String existing = configManager.getConfiguration(EventListConfig.CONFIG_GROUP, newKey);
+        String existing = configManager.getConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, newKey);
         if (existing != null)
         {
             return;
         }
-        String legacy = configManager.getConfiguration(EventListConfig.CONFIG_GROUP, oldKey);
+        String legacy = configManager.getConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, oldKey);
         if (legacy == null)
         {
             return;
         }
-        configManager.setConfiguration(EventListConfig.CONFIG_GROUP, newKey, legacy);
-        configManager.unsetConfiguration(EventListConfig.CONFIG_GROUP, oldKey);
+        configManager.setConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, newKey, legacy);
+        configManager.unsetConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, oldKey);
         log.debug("Migrated config {} -> {}", oldKey, newKey);
     }
 
     @Provides
-    EventListConfig provideConfig(ConfigManager configManager)
+    IronforgedClanEventsConfig provideConfig(ConfigManager configManager)
     {
-        return configManager.getConfig(EventListConfig.class);
+        return configManager.getConfig(IronforgedClanEventsConfig.class);
     }
 }

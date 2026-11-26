@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -11,8 +11,8 @@ import java.awt.Color;
 /**
  * Plugin settings: events feed, passphrase overlay and event teams.
  */
-@ConfigGroup(EventListConfig.CONFIG_GROUP)
-public interface EventListConfig extends Config
+@ConfigGroup(IronforgedClanEventsConfig.CONFIG_GROUP)
+public interface IronforgedClanEventsConfig extends Config
 {
     String CONFIG_GROUP = "ironforgedclanevents";
 

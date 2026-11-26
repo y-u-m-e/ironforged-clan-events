@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
@@ -16,7 +16,7 @@ import javax.inject.Singleton;
 @Singleton
 public class SeasonalViewService
 {
-    private final EventListConfig config;
+    private final IronforgedClanEventsConfig config;
     private final OkHttpClient httpClient;
     private final Gson gson;
 
@@ -24,7 +24,7 @@ public class SeasonalViewService
     private volatile long lastFetchTime;
 
     @Inject
-    SeasonalViewService(EventListConfig config, OkHttpClient httpClient, Gson gson)
+    SeasonalViewService(IronforgedClanEventsConfig config, OkHttpClient httpClient, Gson gson)
     {
         this.config = config;
         this.httpClient = httpClient;

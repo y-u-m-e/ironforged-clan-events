@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -19,7 +19,7 @@ import javax.inject.Singleton;
 @Singleton
 public class SeasonalCatalogService
 {
-    private final EventListConfig config;
+    private final IronforgedClanEventsConfig config;
     private final OkHttpClient httpClient;
     private final Gson gson;
 
@@ -28,7 +28,7 @@ public class SeasonalCatalogService
     private volatile long lastFetchTime = 0;
 
     @Inject
-    public SeasonalCatalogService(EventListConfig config, OkHttpClient httpClient, Gson gson)
+    public SeasonalCatalogService(IronforgedClanEventsConfig config, OkHttpClient httpClient, Gson gson)
     {
         this.config = config;
         this.httpClient = httpClient;
@@ -106,7 +106,7 @@ public class SeasonalCatalogService
     /**
      * Seasonal Event ID. Prefers the config value when set; otherwise the API value.
      */
-    public String resolveEventId(EventListConfig config)
+    public String resolveEventId(IronforgedClanEventsConfig config)
     {
         if (config != null && config.seasonalEventId() != null)
         {
@@ -122,7 +122,7 @@ public class SeasonalCatalogService
     /**
      * Seasonal Event Passphrase for the overlay. Prefers the config value when set; otherwise the API value.
      */
-    public String resolveEventPassphrase(EventListConfig config)
+    public String resolveEventPassphrase(IronforgedClanEventsConfig config)
     {
         if (config != null && config.seasonalEventPassphrase() != null)
         {

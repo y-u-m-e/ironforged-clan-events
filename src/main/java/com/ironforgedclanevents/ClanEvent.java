@@ -1,4 +1,4 @@
-package com.claneventlist;
+package com.ironforgedclanevents;
 
 import lombok.Data;
 import lombok.AllArgsConstructor;
