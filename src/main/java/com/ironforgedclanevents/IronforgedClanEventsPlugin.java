@@ -130,7 +130,10 @@ public class IronforgedClanEventsPlugin extends Plugin
             .panel(panel)
             .build();
 
-        clientToolbar.addNavigation(navButton);
+        if (config.showSidebarButton())
+        {
+            clientToolbar.addNavigation(navButton);
+        }
 
         initialized = true;
         eventTeamService.start();
@@ -368,6 +371,19 @@ public class IronforgedClanEventsPlugin extends Plugin
             else
             {
                 seasonalCatalogService.clear();
+            }
+        }
+
+        if (key.equals("showSidebarButton") && navButton != null)
+        {
+            // Removing a button that was never added is a no-op, so no need to track the state.
+            if (config.showSidebarButton())
+            {
+                clientToolbar.addNavigation(navButton);
+            }
+            else
+            {
+                clientToolbar.removeNavigation(navButton);
             }
         }
 

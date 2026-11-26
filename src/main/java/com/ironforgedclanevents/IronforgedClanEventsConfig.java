@@ -188,11 +188,23 @@ public interface IronforgedClanEventsConfig extends Config
     // ========== Panel Settings ==========
 
     @ConfigItem(
+        keyName = "showSidebarButton",
+        name = "Show sidebar button",
+        description = "Show the Ironforged icon in RuneLite's sidebar to open the side panel",
+        section = panelSection,
+        position = 0
+    )
+    default boolean showSidebarButton()
+    {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = "maxEventsShown",
         name = "Max Events Shown",
         description = "Maximum number of events to show in the panel (scroll for more)",
         section = panelSection,
-        position = 0
+        position = 1
     )
     @Range(min = 1, max = 50)
     default int maxEventsInPanel()
@@ -205,7 +217,7 @@ public interface IronforgedClanEventsConfig extends Config
         name = "Show Past Events",
         description = "Include events that have already passed",
         section = panelSection,
-        position = 1
+        position = 2
     )
     default boolean showPastEvents()
     {
