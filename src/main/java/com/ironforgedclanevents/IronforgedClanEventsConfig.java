@@ -46,7 +46,7 @@ public interface IronforgedClanEventsConfig extends Config
 
     @ConfigSection(
         name = "Teams",
-        description = "Colored team badges in chat, friends/clan lists, and overhead names",
+        description = "Colored team badges in chat, and friends/clan lists",
         position = 4
     )
     String teamsSection = "teamsSection";
@@ -270,18 +270,6 @@ public interface IronforgedClanEventsConfig extends Config
     default int teamCount()
     {
         return 2;
-    }
-
-    @ConfigItem(
-        keyName = "nameplateTeamIcons",
-        name = "Overhead icons",
-        description = "Show team icons above players' heads next to the overhead name",
-        section = teamsSection,
-        position = 3
-    )
-    default boolean nameplateTeamIcons()
-    {
-        return true;
     }
 
     @ConfigItem(

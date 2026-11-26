@@ -71,9 +71,6 @@ public class IronforgedClanEventsPlugin extends Plugin
     private EventTeamSyncService eventTeamSyncService;
 
     @Inject
-    private EventTeamOverlay eventTeamOverlay;
-
-    @Inject
     private ScheduledExecutorService executorService;
 
     @Inject
@@ -110,7 +107,6 @@ public class IronforgedClanEventsPlugin extends Plugin
         overlayManager.add(passphraseOverlay);
         nextEventOverlay = new NextEventOverlay(config, eventsApiService);
         overlayManager.add(nextEventOverlay);
-        overlayManager.add(eventTeamOverlay);
 
         panel = new IronforgedClanEventsPanel(
             config,
@@ -150,7 +146,6 @@ public class IronforgedClanEventsPlugin extends Plugin
 
         overlayManager.remove(passphraseOverlay);
         overlayManager.remove(nextEventOverlay);
-        overlayManager.remove(eventTeamOverlay);
         clientToolbar.removeNavigation(navButton);
         seasonalEventService.clear();
         eventsApiService.clearEvents();
@@ -206,7 +201,6 @@ public class IronforgedClanEventsPlugin extends Plugin
     @Subscribe
     public void onGameTick(GameTick event)
     {
-        eventTeamService.onGameTick();
         if (onlineCountsDirty)
         {
             onlineCountsDirty = false;
@@ -294,7 +288,6 @@ public class IronforgedClanEventsPlugin extends Plugin
         if (key.startsWith("team")
             || key.equals("enableTeamIcons")
             || key.equals("enableTeamRosterSync")
-            || key.equals("nameplateTeamIcons")
             || key.equals("friendsListTeamIcons")
             || key.equals("clanListTeamIcons")
             || key.equals("broadcastTeamIcons"))

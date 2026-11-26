@@ -15,7 +15,7 @@ import java.awt.image.BufferedImage;
 final class EventTeamIconFactory
 {
     /**
-     * Chat / overhead: must match {@code ChatIconManager.IMAGE_DIMENSION} (11×11).
+     * Chat: must match {@code ChatIconManager.IMAGE_DIMENSION} (11×11).
      * Official wiki clan icons are 13×13 and get fitted onto this canvas.
      */
     static final int BADGE_SIZE = 11;
@@ -151,7 +151,7 @@ final class EventTeamIconFactory
         return TeamPalette.byIndex(Math.max(0, teamNumber - 1));
     }
 
-    /** 11×11 badge for chat names and overhead. */
+    /** 11×11 badge for chat names. */
     static BufferedImage loadBadge(TeamPalette palette)
     {
         return loadSized(palette, BADGE_SIZE, BADGE_SIZE);

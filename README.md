@@ -10,7 +10,7 @@ A RuneLite plugin for **Iron Forged** clan events: live calendar from `api.ironf
 - **Side panel timeline** — Day-grouped events with live / today / future / past color tones
 - **Seasonal Event Passphrase** — Optional on-screen passphrase (and optional local date/time), movable and resizable. Prefers the API value; config is fallback.
 - **Your team** — The Seasonal tab shows the event, your team and its badge, and which teammates are online
-- **Event teams** — Paste RSNs per team in the Seasonal tab, or opt in to **Sync team roster from API** (`GET /plugins/seasonal/teams`). Rostered players get their team's clan icon in chat, PMs, broadcasts, friends list, clan list and overhead (overhead icons are hidden in the Wilderness, on PvP worlds and in PvP minigames)
+- **Event teams** — Paste RSNs per team in the Seasonal tab, or opt in to **Sync team roster from API** (`GET /plugins/seasonal/teams`). Rostered players get their team's clan icon in chat, PMs, broadcasts, friends list and clan list
 - **Local times** — API timestamps are UTC and shown in your local timezone
 
 ---
