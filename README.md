@@ -2,8 +2,6 @@
 
 A RuneLite plugin for **Iron Forged** clan events: live calendar from `api.ironforged.gg`, side panel timeline, your seasonal team, optional Seasonal Event Passphrase overlay, and event team badges.
 
-Plugin drop submit was removed on 2026-11-08. It can be restored from git tag `seasonal-submit-v1`.
-
 ---
 
 ## Features

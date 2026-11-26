@@ -330,9 +330,6 @@ public class ClanEvent implements Comparable<ClanEvent>
         return local.toLocalDate().equals(LocalDateTime.now().toLocalDate().plusDays(1));
     }
 
-    /**
-     * Checks if this event has a URL.
-     */
     /** Only http(s) links are opened; the API is trusted for content, not for URL schemes. */
     public boolean hasUrl()
     {

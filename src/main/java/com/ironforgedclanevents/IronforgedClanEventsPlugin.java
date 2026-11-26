@@ -330,11 +330,6 @@ public class IronforgedClanEventsPlugin extends Plugin
         if (key.equals("enableEventsFeed"))
         {
             refreshEvents();
-            refreshSeasonalEvent();
-            if (config.enableTeamRosterSync())
-            {
-                syncTeams();
-            }
         }
 
         if (key.equals("showSeasonalEventPassphrase"))

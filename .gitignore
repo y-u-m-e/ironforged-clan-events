@@ -2,6 +2,7 @@
 build
 .idea/
 .project
+.factorypath
 .settings/
 .classpath
 nbactions.xml
