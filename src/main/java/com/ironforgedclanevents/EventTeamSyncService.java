@@ -36,7 +36,7 @@ public class EventTeamSyncService
     private final OkHttpClient httpClient;
     private final Gson gson;
 
-    private volatile long lastFetchTime;
+    private final RefreshBackoff backoff = new RefreshBackoff();
     private volatile String lastStatus = "Team sync idle";
     /** From the last successful sync; empty until one succeeds. */
     private volatile String eventName = "";
@@ -84,7 +84,7 @@ public class EventTeamSyncService
     /** Forget the last fetch so a restarted plugin syncs immediately. */
     public void reset()
     {
-        lastFetchTime = 0;
+        backoff.reset();
         lastStatus = "Team sync idle";
         eventName = "";
         rosterUpdatedAt = "";
@@ -96,8 +96,7 @@ public class EventTeamSyncService
         {
             return false;
         }
-        long intervalMs = Math.max(1, intervalMinutes) * 60_000L;
-        return System.currentTimeMillis() - lastFetchTime >= intervalMs;
+        return backoff.isDue(intervalMinutes, System.currentTimeMillis());
     }
 
     /**
@@ -141,13 +140,14 @@ public class EventTeamSyncService
 
         try (Response response = httpClient.newCall(req.build()).execute())
         {
-            lastFetchTime = System.currentTimeMillis();
             if (!response.isSuccessful() || response.body() == null)
             {
                 lastStatus = "Team sync failed: HTTP " + response.code();
-                log.warn("{}", lastStatus);
+                logFailure();
                 return false;
             }
+            // A response arrived; payload problems below are not retried faster than the interval.
+            backoff.succeeded(System.currentTimeMillis());
 
             JsonObject root = gson.fromJson(response.body().string(), JsonObject.class);
             if (root == null)
@@ -217,8 +217,20 @@ public class EventTeamSyncService
         catch (Exception e)
         {
             lastStatus = "Team sync failed: " + (e.getMessage() == null ? "error" : e.getMessage());
-            log.warn("{}", lastStatus);
+            logFailure();
             return false;
+        }
+    }
+
+    private void logFailure()
+    {
+        if (backoff.failed(System.currentTimeMillis()))
+        {
+            log.warn("{}", lastStatus);
+        }
+        else
+        {
+            log.debug("{}", lastStatus);
         }
     }
 
