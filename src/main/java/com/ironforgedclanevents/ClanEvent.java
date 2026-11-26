@@ -240,7 +240,7 @@ public class ClanEvent implements Comparable<ClanEvent>
 
     /**
      * Returns the time range in the user's local timezone (e.g. "1:00 PM – 2:00 PM PDT").
-     * Sheet times are stored as UTC and converted here.
+     * API times are stored as UTC and converted here.
      */
     public String getTimeRange()
     {
@@ -257,42 +257,6 @@ public class ClanEvent implements Comparable<ClanEvent>
             return startStr + " – " + end.format(TIME_ONLY) + " " + zone;
         }
         return startStr + " " + zone;
-    }
-
-    /**
-     * Returns the duration string if end time is set.
-     */
-    public String getDuration()
-    {
-        if (dateTime == null || endTime == null)
-        {
-            return null;
-        }
-        
-        LocalTime startTime = dateTime.toLocalTime();
-        long minutes = ChronoUnit.MINUTES.between(startTime, endTime);
-        
-        // Handle overnight events
-        if (minutes < 0)
-        {
-            minutes += 24 * 60;
-        }
-        
-        long hours = minutes / 60;
-        long mins = minutes % 60;
-        
-        if (hours > 0 && mins > 0)
-        {
-            return hours + "h " + mins + "m";
-        }
-        else if (hours > 0)
-        {
-            return hours + "h";
-        }
-        else
-        {
-            return mins + "m";
-        }
     }
 
     /**
@@ -369,9 +333,15 @@ public class ClanEvent implements Comparable<ClanEvent>
     /**
      * Checks if this event has a URL.
      */
+    /** Only http(s) links are opened; the API is trusted for content, not for URL schemes. */
     public boolean hasUrl()
     {
-        return url != null && !url.trim().isEmpty();
+        if (url == null)
+        {
+            return false;
+        }
+        String u = url.trim().toLowerCase(java.util.Locale.ROOT);
+        return u.startsWith("https://") || u.startsWith("http://");
     }
 
     /**

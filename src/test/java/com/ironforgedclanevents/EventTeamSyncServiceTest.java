@@ -71,6 +71,15 @@ public class EventTeamSyncServiceTest
     }
 
     @Test
+    public void syncLabelSaysWhenSlotsAboveTheLimitWereIgnored()
+    {
+        assertEquals("Synced 2 team(s)",
+            EventTeamSyncService.syncedLabel(2, Arrays.asList(team("A", 1), team("B", 2))));
+        assertEquals("Synced 1 of 2 teams (slots above " + EventTeamService.MAX_TEAMS + " ignored)",
+            EventTeamSyncService.syncedLabel(1, Arrays.asList(team("A", 1), team("B", EventTeamService.MAX_TEAMS + 1))));
+    }
+
+    @Test
     public void arrayOrderFallbackStillFillsSlotsOneUp()
     {
         // What parseTeam produces when the API omits "slot" entirely.

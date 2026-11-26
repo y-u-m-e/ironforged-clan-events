@@ -11,23 +11,22 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 /**
- * Fetches GET /plugins/seasonal for the event identity: the passphrase shown on the overlay and the
- * event id that team roster sync asks for. The drop catalog in the same payload is ignored now that
- * plugin drop submit is removed (restore from git tag seasonal-submit-v1).
+ * Fetches GET /plugins/seasonal for the seasonal event's identity: the passphrase shown on the overlay
+ * and the event id that team roster sync asks for. Other fields in the payload are ignored.
  */
 @Slf4j
 @Singleton
-public class SeasonalCatalogService
+public class SeasonalEventService
 {
     private final OkHttpClient httpClient;
     private final Gson gson;
 
     private volatile String eventId = "";
     private volatile String eventPassphrase = "";
-    private volatile long lastFetchTime = 0;
+    private final RefreshBackoff backoff = new RefreshBackoff();
 
     @Inject
-    public SeasonalCatalogService(OkHttpClient httpClient, Gson gson)
+    public SeasonalEventService(OkHttpClient httpClient, Gson gson)
     {
         this.httpClient = httpClient;
         this.gson = gson;
@@ -46,8 +45,8 @@ public class SeasonalCatalogService
         {
             if (!response.isSuccessful() || response.body() == null)
             {
-                // Keep the previous values; lastFetchTime is not advanced, so the next tick retries.
-                log.warn("Seasonal event fetch failed: HTTP {}", response.code());
+                // Keep the previous values; the backoff decides when to retry.
+                logFailure("HTTP " + response.code());
                 return;
             }
 
@@ -75,12 +74,24 @@ public class SeasonalCatalogService
 
             eventId = nextEventId;
             eventPassphrase = nextEventPassphrase;
-            lastFetchTime = System.currentTimeMillis();
+            backoff.succeeded(System.currentTimeMillis());
             log.debug("Seasonal event refreshed: id={}", nextEventId);
         }
         catch (Exception e)
         {
-            log.warn("Seasonal event error: {}", e.getMessage());
+            logFailure(e.getMessage());
+        }
+    }
+
+    private void logFailure(String error)
+    {
+        if (backoff.failed(System.currentTimeMillis()))
+        {
+            log.warn("Seasonal event fetch failed: {}", error);
+        }
+        else
+        {
+            log.debug("Seasonal event fetch failed again: {}", error);
         }
     }
 
@@ -88,17 +99,12 @@ public class SeasonalCatalogService
     {
         eventId = "";
         eventPassphrase = "";
-        lastFetchTime = 0;
+        backoff.reset();
     }
 
     public boolean needsRefresh(int refreshIntervalMinutes)
     {
-        if (lastFetchTime == 0)
-        {
-            return true;
-        }
-        long elapsed = System.currentTimeMillis() - lastFetchTime;
-        return elapsed >= (long) refreshIntervalMinutes * 60_000L;
+        return backoff.isDue(refreshIntervalMinutes, System.currentTimeMillis());
     }
 
     /**

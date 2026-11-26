@@ -35,6 +35,9 @@ public class EventsApiService
     /** Replaced wholesale (never mutated) so the EDT and executor can read it without locking. */
     private volatile List<ClanEvent> cachedEvents = Collections.emptyList();
     private volatile long lastFetchTime = 0;
+    /** Last /health answer; reused between polls. Executor only. */
+    private HealthPayload lastHealth;
+    private final RefreshBackoff backoff = new RefreshBackoff();
     private volatile ApiStatus apiStatus = ApiStatus.unknown("Enable Load clan events to check API health");
 
     @Inject
@@ -50,11 +53,17 @@ public class EventsApiService
     }
 
     /**
-     * Fetches events from the Iron Forged events API and refreshes health status.
+     * Fetches events from the Iron Forged events API. {@code /health} only colours the status dot, so it is
+     * fetched on the first fetch, on a manual refresh, and after a feed failure rather than on every poll.
+     *
+     * @return true if the feed was fetched; on failure the previous events are kept
      */
-    public List<ClanEvent> fetchEvents()
+    public boolean fetchEvents(boolean manual)
     {
-        HealthPayload health = fetchHealth();
+        if (manual || lastHealth == null)
+        {
+            lastHealth = fetchHealth();
+        }
         String eventsUrl = API_BASE + "/plugins/events";
         log.debug("Fetching events from: {}", eventsUrl);
 
@@ -64,38 +73,43 @@ public class EventsApiService
             .header("Accept", "application/json")
             .build();
 
+        int httpCode = 0;
+        String error;
         try (Response response = httpClient.newCall(request).execute())
         {
-            if (!response.isSuccessful())
-            {
-                log.warn("Failed to fetch events API: HTTP {}", response.code());
-                apiStatus = buildStatus(health, false, response.code(), null, cachedEvents.size());
-                return cachedEvents;
-            }
-
+            httpCode = response.code();
             okhttp3.ResponseBody responseBody = response.body();
-            if (responseBody == null)
+            if (response.isSuccessful() && responseBody != null)
             {
-                log.warn("Empty response body from events API");
-                apiStatus = buildStatus(health, false, response.code(), null, cachedEvents.size());
-                return cachedEvents;
+                String body = responseBody.string();
+                String feedCache = parseFeedCache(body);
+                List<ClanEvent> events = parseEventsJson(body);
+                cachedEvents = Collections.unmodifiableList(events);
+                long now = System.currentTimeMillis();
+                lastFetchTime = now;
+                backoff.succeeded(now);
+                apiStatus = buildStatus(lastHealth, true, httpCode, feedCache, events.size());
+                log.debug("Fetched {} events", events.size());
+                return true;
             }
-
-            String body = responseBody.string();
-            String feedCache = parseFeedCache(body);
-            List<ClanEvent> events = parseEventsJson(body);
-            cachedEvents = Collections.unmodifiableList(events);
-            lastFetchTime = System.currentTimeMillis();
-            apiStatus = buildStatus(health, true, response.code(), feedCache, events.size());
-            log.debug("Fetched {} events", events.size());
-            return events;
+            error = "HTTP " + httpCode;
         }
         catch (Exception e)
         {
-            log.warn("Error fetching events API: {}", e.getMessage());
-            apiStatus = buildStatus(health, false, 0, null, cachedEvents.size());
-            return cachedEvents;
+            error = e.getMessage();
         }
+
+        lastHealth = fetchHealth();
+        apiStatus = buildStatus(lastHealth, false, httpCode, null, cachedEvents.size());
+        if (backoff.failed(System.currentTimeMillis()))
+        {
+            log.warn("Failed to fetch events API: {}", error);
+        }
+        else
+        {
+            log.debug("Failed to fetch events API again: {}", error);
+        }
+        return false;
     }
 
     private HealthPayload fetchHealth()
@@ -379,6 +393,8 @@ public class EventsApiService
     {
         cachedEvents = Collections.emptyList();
         lastFetchTime = 0;
+        lastHealth = null;
+        backoff.reset();
         apiStatus = ApiStatus.unknown("Enable Load clan events to check API health");
         log.debug("Cleared all cached events");
     }
@@ -423,12 +439,7 @@ public class EventsApiService
 
     public boolean needsRefresh(int refreshIntervalMinutes)
     {
-        if (lastFetchTime == 0)
-        {
-            return true;
-        }
-        long elapsed = System.currentTimeMillis() - lastFetchTime;
-        return elapsed >= (long) refreshIntervalMinutes * 60_000L;
+        return backoff.isDue(refreshIntervalMinutes, System.currentTimeMillis());
     }
 
     public long getLastFetchTime()

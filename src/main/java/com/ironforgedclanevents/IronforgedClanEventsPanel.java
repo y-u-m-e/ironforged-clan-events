@@ -1639,11 +1639,11 @@ public class IronforgedClanEventsPanel extends PluginPanel
 
         if (event.getHost() != null && !event.getHost().isEmpty())
         {
-            details.add(detailLine("Host  " + event.getHost()));
+            details.add(detailLine(plainLabelText("Host  " + event.getHost())));
         }
         if (event.getLocation() != null && !event.getLocation().isEmpty())
         {
-            details.add(detailLine("At  " + event.getLocation()));
+            details.add(detailLine(plainLabelText("At  " + event.getLocation())));
         }
         if (event.getDescription() != null && !event.getDescription().isEmpty())
         {
@@ -1678,7 +1678,7 @@ public class IronforgedClanEventsPanel extends PluginPanel
                 @Override
                 public void mouseClicked(MouseEvent e)
                 {
-                    LinkBrowser.browse(event.getUrl());
+                    LinkBrowser.browse(event.getUrl().trim());
                 }
 
                 @Override

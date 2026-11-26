@@ -66,7 +66,7 @@ public interface IronforgedClanEventsConfig extends Config
         section = eventsSection,
         position = 1
     )
-    @Range(min = 1, max = 60)
+    @Range(min = 5, max = 60)
     default int refreshInterval()
     {
         return 15;
@@ -229,11 +229,11 @@ public interface IronforgedClanEventsConfig extends Config
     @ConfigItem(
         keyName = "seasonalCatalogRefreshInterval",
         name = "Roster refresh (min)",
-        description = "How often to re-sync the team roster and seasonal event from the API",
+        description = "How often to re-fetch the team roster and event passphrase from the API",
         section = teamsSection,
         position = 2
     )
-    @Range(min = 1, max = 60)
+    @Range(min = 15, max = 60)
     default int seasonalCatalogRefreshInterval()
     {
         return 15;

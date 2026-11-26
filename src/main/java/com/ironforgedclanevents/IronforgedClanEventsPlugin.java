@@ -15,7 +15,6 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
-import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -31,6 +30,7 @@ import javax.inject.Inject;
 import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Ironforged Clan Events: events side panel, your seasonal team, passphrase overlay and event team badges.
@@ -38,7 +38,7 @@ import java.util.concurrent.ScheduledExecutorService;
 @Slf4j
 @PluginDescriptor(
     name = "Ironforged Clan Events",
-    description = "Display Iron Forged clan events from api.ironforged.gg in a side panel, with your seasonal team, an optional Seasonal Event Passphrase overlay, and team badges",
+    description = "Display Iron Forged clan events from api.ironforged.gg in a side panel, with your seasonal team, an optional Seasonal Event Passphrase overlay, and event team icons. Enable Load clan events in settings.",
     tags = {"clan", "events", "calendar", "schedule", "seasonal", "ironforged", "teams"}
 )
 public class IronforgedClanEventsPlugin extends Plugin
@@ -62,7 +62,7 @@ public class IronforgedClanEventsPlugin extends Plugin
     private EventsApiService eventsApiService;
 
     @Inject
-    private SeasonalCatalogService seasonalCatalogService;
+    private SeasonalEventService seasonalEventService;
 
     @Inject
     private EventTeamService eventTeamService;
@@ -79,24 +79,32 @@ public class IronforgedClanEventsPlugin extends Plugin
     @Inject
     private Client client;
 
-    @Inject
-    private ClientThread clientThread;
+    /** Config group of the Plugin Hub build before the rename (8d48b19). */
+    static final String LEGACY_CONFIG_GROUP = "claneventlist";
+    static final int MIN_EVENTS_INTERVAL = 5;
+    static final int MIN_ROSTER_INTERVAL = 15;
 
     private SeasonalEventPassphraseOverlay passphraseOverlay;
-    private IronforgedClanEventsPanel panel;
+    /** Set and cleared on the EDT, read from executor threads: copy to a local before use. */
+    private volatile IronforgedClanEventsPanel panel;
     private NavigationButton navButton;
-    private boolean initialized = false;
+    private volatile boolean initialized = false;
+    private final AtomicBoolean eventsFetchInFlight = new AtomicBoolean();
+    /** Client thread only. True from the login screen / hop / reconnect until the next LOGGED_IN. */
+    private boolean loginPending;
+    /** Client thread only. Clan / friends chat membership changed; recount once on the next tick. */
+    private boolean onlineCountsDirty;
 
     @Override
     protected void startUp() throws Exception
     {
         log.info("Ironforged Clan Events plugin started");
 
-        migrateLegacyBingoConfig();
-        // Free-text host was replaced by the Use dev API toggle.
-        configManager.unsetConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, "pluginApiBase");
+        migrateConfigKey(configManager, "maxEventsShown");
+        migrateConfigKey(configManager, "showPastEvents");
+        migrateConfigKey(configManager, "refreshInterval");
 
-        passphraseOverlay = new SeasonalEventPassphraseOverlay(config, seasonalCatalogService);
+        passphraseOverlay = new SeasonalEventPassphraseOverlay(config, seasonalEventService);
         overlayManager.add(passphraseOverlay);
         overlayManager.add(eventTeamOverlay);
 
@@ -106,7 +114,7 @@ public class IronforgedClanEventsPlugin extends Plugin
             eventsApiService,
             eventTeamService,
             eventTeamSyncService,
-            this::refreshEvents,
+            () -> refreshEvents(true),
             this::syncTeams
         );
 
@@ -124,10 +132,11 @@ public class IronforgedClanEventsPlugin extends Plugin
             clientToolbar.addNavigation(navButton);
         }
 
+        loginPending = client.getGameState() != GameState.LOGGED_IN;
         initialized = true;
         eventTeamService.start();
         refreshEvents();
-        refreshSeasonalCatalog();
+        refreshSeasonalEvent();
     }
 
     @Override
@@ -138,7 +147,7 @@ public class IronforgedClanEventsPlugin extends Plugin
         overlayManager.remove(passphraseOverlay);
         overlayManager.remove(eventTeamOverlay);
         clientToolbar.removeNavigation(navButton);
-        seasonalCatalogService.clear();
+        seasonalEventService.clear();
         eventsApiService.clearEvents();
         eventTeamSyncService.reset();
         eventTeamService.stop();
@@ -152,22 +161,39 @@ public class IronforgedClanEventsPlugin extends Plugin
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
     {
-        if (event.getGameState() == GameState.LOGGED_IN && initialized)
+        switch (event.getGameState())
         {
-            eventTeamService.refreshSurfaces();
-            if (panel != null)
-            {
-                panel.refreshTeamsOnlineCounts();
-            }
-            if (eventsApiService.needsRefresh(config.refreshInterval()))
-            {
-                refreshEvents();
-            }
-            if (config.showSeasonalEventPassphrase()
-                && seasonalCatalogService.needsRefresh(config.seasonalCatalogRefreshInterval()))
-            {
-                refreshSeasonalCatalog();
-            }
+            case LOGIN_SCREEN:
+            case LOGGING_IN:
+            case HOPPING:
+            case CONNECTION_LOST:
+                loginPending = true;
+                return;
+            case LOGGED_IN:
+                // LOGGED_IN also follows every LOADING (each region change); act only after a real login.
+                if (!loginPending || !initialized)
+                {
+                    return;
+                }
+                loginPending = false;
+                break;
+            default:
+                return;
+        }
+
+        eventTeamService.refreshSurfaces();
+        IronforgedClanEventsPanel p = panel;
+        if (p != null)
+        {
+            p.refreshTeamsOnlineCounts();
+        }
+        if (eventsApiService.needsRefresh(eventsInterval()))
+        {
+            refreshEvents();
+        }
+        if (seasonalEventNeeded() && seasonalEventService.needsRefresh(rosterInterval()))
+        {
+            refreshSeasonalEvent();
         }
     }
 
@@ -175,6 +201,15 @@ public class IronforgedClanEventsPlugin extends Plugin
     public void onGameTick(GameTick event)
     {
         eventTeamService.onGameTick();
+        if (onlineCountsDirty)
+        {
+            onlineCountsDirty = false;
+            IronforgedClanEventsPanel p = panel;
+            if (p != null)
+            {
+                p.refreshTeamsOnlineCounts();
+            }
+        }
     }
 
     @Subscribe
@@ -198,55 +233,37 @@ public class IronforgedClanEventsPlugin extends Plugin
     @Subscribe
     public void onClanChannelChanged(ClanChannelChanged event)
     {
-        if (panel != null)
-        {
-            panel.refreshTeamsOnlineCounts();
-        }
+        onlineCountsDirty = true;
     }
 
     @Subscribe
     public void onClanMemberJoined(ClanMemberJoined event)
     {
-        if (panel != null)
-        {
-            panel.refreshTeamsOnlineCounts();
-        }
+        onlineCountsDirty = true;
     }
 
     @Subscribe
     public void onClanMemberLeft(ClanMemberLeft event)
     {
-        if (panel != null)
-        {
-            panel.refreshTeamsOnlineCounts();
-        }
+        onlineCountsDirty = true;
     }
 
     @Subscribe
     public void onFriendsChatSync(FriendsChatSync event)
     {
-        if (panel != null)
-        {
-            panel.refreshTeamsOnlineCounts();
-        }
+        onlineCountsDirty = true;
     }
 
     @Subscribe
     public void onFriendsChatMemberJoined(FriendsChatMemberJoined event)
     {
-        if (panel != null)
-        {
-            panel.refreshTeamsOnlineCounts();
-        }
+        onlineCountsDirty = true;
     }
 
     @Subscribe
     public void onFriendsChatMemberLeft(FriendsChatMemberLeft event)
     {
-        if (panel != null)
-        {
-            panel.refreshTeamsOnlineCounts();
-        }
+        onlineCountsDirty = true;
     }
 
     @Subscribe
@@ -277,33 +294,43 @@ public class IronforgedClanEventsPlugin extends Plugin
             || key.equals("broadcastTeamIcons"))
         {
             eventTeamService.onConfigChanged(key);
-            if (panel != null)
+            IronforgedClanEventsPanel p = panel;
+            if (p != null)
             {
                 if ("teamCount".equals(key) || (key.startsWith("team") && key.endsWith("Label")))
                 {
-                    panel.rebuildTeamsUi();
+                    p.rebuildTeamsUi();
                 }
                 else if (key.startsWith("team") && key.endsWith("Names"))
                 {
                     // Usually typed in the panel itself: rebuilding would destroy the focused text area.
-                    panel.refreshTeamNames();
+                    p.refreshTeamNames();
                 }
                 else
                 {
-                    panel.refreshTeamsOnlineCounts();
-                    panel.updateTeamsSyncLabel();
+                    p.refreshTeamsOnlineCounts();
+                    p.updateTeamsSyncLabel();
                 }
             }
-            if ("enableTeamRosterSync".equals(key) && config.enableTeamRosterSync())
+            if ("enableTeamRosterSync".equals(key))
             {
-                syncTeams();
+                if (config.enableTeamRosterSync())
+                {
+                    // Queued first on the same executor, so the sync sees the event id and passphrase.
+                    refreshSeasonalEvent();
+                    syncTeams();
+                }
+                else if (!config.showSeasonalEventPassphrase())
+                {
+                    seasonalEventService.clear();
+                }
             }
         }
 
         if (key.equals("enableEventsFeed"))
         {
             refreshEvents();
-            refreshSeasonalCatalog();
+            refreshSeasonalEvent();
             if (config.enableTeamRosterSync())
             {
                 syncTeams();
@@ -314,11 +341,11 @@ public class IronforgedClanEventsPlugin extends Plugin
         {
             if (config.showSeasonalEventPassphrase())
             {
-                refreshSeasonalCatalog();
+                refreshSeasonalEvent();
             }
-            else
+            else if (!config.enableTeamRosterSync())
             {
-                seasonalCatalogService.clear();
+                seasonalEventService.clear();
             }
         }
 
@@ -337,9 +364,10 @@ public class IronforgedClanEventsPlugin extends Plugin
 
         if (key.equals("showPastEvents") || key.equals("maxEventsShown"))
         {
-            if (panel != null)
+            IronforgedClanEventsPanel p = panel;
+            if (p != null)
             {
-                panel.updateEvents();
+                p.updateEvents();
             }
         }
     }
@@ -352,92 +380,130 @@ public class IronforgedClanEventsPlugin extends Plugin
             return;
         }
 
-        if (eventsApiService.needsRefresh(config.refreshInterval()))
+        IronforgedClanEventsPanel p = panel;
+        // Nobody sees the panel or overlays from the login screen; the login handler catches up.
+        boolean loggedIn = client.getGameState() == GameState.LOGGED_IN;
+
+        if (loggedIn && eventsApiService.needsRefresh(eventsInterval()))
         {
             log.debug("Scheduled refresh triggered");
             refreshEvents();
         }
-        else if (panel != null)
+        else if (p != null)
         {
-            panel.updateEvents();
+            p.updateEvents();
         }
 
-        if (config.showSeasonalEventPassphrase()
-            && seasonalCatalogService.needsRefresh(config.seasonalCatalogRefreshInterval()))
+        if (!loggedIn)
         {
-            refreshSeasonalCatalog();
+            return;
         }
 
-        if (config.enableTeamRosterSync()
-            && eventTeamSyncService.needsRefresh(config.seasonalCatalogRefreshInterval()))
+        if (seasonalEventNeeded() && seasonalEventService.needsRefresh(rosterInterval()))
+        {
+            refreshSeasonalEvent();
+        }
+
+        if (config.enableTeamRosterSync() && eventTeamSyncService.needsRefresh(rosterInterval()))
         {
             syncTeams();
         }
 
-        if (panel != null && config.enableTeamIcons())
+        if (p != null && config.enableTeamIcons())
         {
-            panel.refreshTeamsOnlineCounts();
+            p.refreshTeamsOnlineCounts();
         }
     }
 
     public void refreshEvents()
+    {
+        refreshEvents(false);
+    }
+
+    /** @param manual the panel's refresh button: also re-checks API health. */
+    private void refreshEvents(boolean manual)
     {
         if (!initialized)
         {
             return;
         }
 
+        IronforgedClanEventsPanel p = panel;
         if (!config.enableEventsFeed())
         {
             log.debug("Events feed disabled");
             eventsApiService.clearEvents();
-            if (panel != null)
+            if (p != null)
             {
-                panel.updateEvents();
+                p.updateEvents();
             }
             return;
         }
 
-        if (panel != null)
+        // One fetch at a time: the refresh button and the schedule can otherwise overlap.
+        if (!eventsFetchInFlight.compareAndSet(false, true))
         {
-            panel.showLoading();
+            return;
+        }
+
+        if (p != null)
+        {
+            p.showLoading();
         }
 
         executorService.submit(() ->
         {
             try
             {
-                eventsApiService.fetchEvents();
-
-                if (panel != null)
+                boolean ok = eventsApiService.fetchEvents(manual);
+                IronforgedClanEventsPanel current = panel;
+                if (current == null)
                 {
-                    panel.updateEvents();
+                    return;
                 }
-
-                log.debug("Events refreshed successfully");
+                if (!ok && eventsApiService.getCachedEvents().isEmpty())
+                {
+                    current.showError("Failed to fetch events.<br>Try again later.");
+                }
+                else
+                {
+                    current.updateEvents();
+                }
             }
-            catch (Exception e)
+            finally
             {
-                log.warn("Failed to refresh events: {}", e.getMessage());
-                if (panel != null)
-                {
-                    panel.showError("Failed to fetch events.<br>Try again later.");
-                }
+                eventsFetchInFlight.set(false);
             }
         });
     }
 
-    /**
-     * Fetches GET /plugins/seasonal for the server-published passphrase shown on the overlay.
-     */
-    public void refreshSeasonalCatalog()
+    /** The overlay shows the passphrase, and roster sync sends the event id and passphrase. */
+    private boolean seasonalEventNeeded()
     {
-        if (!initialized || !config.showSeasonalEventPassphrase())
+        return config.showSeasonalEventPassphrase() || config.enableTeamRosterSync();
+    }
+
+    private int eventsInterval()
+    {
+        return Math.max(MIN_EVENTS_INTERVAL, config.refreshInterval());
+    }
+
+    private int rosterInterval()
+    {
+        return Math.max(MIN_ROSTER_INTERVAL, config.seasonalCatalogRefreshInterval());
+    }
+
+    /**
+     * Fetches GET /plugins/seasonal: the passphrase for the overlay and the event id for roster sync.
+     */
+    public void refreshSeasonalEvent()
+    {
+        if (!initialized || !seasonalEventNeeded())
         {
             return;
         }
 
-        executorService.submit(seasonalCatalogService::refresh);
+        executorService.submit(seasonalEventService::refresh);
     }
 
     public void syncTeams()
@@ -455,13 +521,14 @@ public class IronforgedClanEventsPlugin extends Plugin
                 // Per-key handling was skipped while applying; rebuild the roster once.
                 eventTeamService.refreshSurfaces();
             }
-            if (panel != null)
+            IronforgedClanEventsPanel p = panel;
+            if (p != null)
             {
                 if (updated)
                 {
-                    panel.rebuildTeamsUi();
+                    p.rebuildTeamsUi();
                 }
-                panel.updateTeamsSyncLabel();
+                p.updateTeamsSyncLabel();
             }
         });
     }
@@ -537,43 +604,21 @@ public class IronforgedClanEventsPlugin extends Plugin
     }
 
     /**
-     * Migrates bingo-* and intermediate keyword-* config keys to Seasonal Event Passphrase keys.
+     * Copies a key from the pre-rename config group when the current group has no value, then unsets the old one.
      */
-    private void migrateLegacyBingoConfig()
+    static void migrateConfigKey(ConfigManager configManager, String key)
     {
-        migrateConfigKey("showBingoKeyword", "showSeasonalEventPassphrase");
-        migrateConfigKey("showSeasonalEventKeyword", "showSeasonalEventPassphrase");
-
-        migrateConfigKey("bingoKeyword", "seasonalEventPassphrase");
-        migrateConfigKey("seasonalEventKeyword", "seasonalEventPassphrase");
-        migrateConfigKey("seasonalSubmitPassphrase", "seasonalEventPassphrase");
-
-        migrateConfigKey("showBingoDateTime", "showSeasonalEventDateTime");
-
-        migrateConfigKey("bingoKeywordColor", "seasonalEventPassphraseColor");
-        migrateConfigKey("seasonalEventKeywordColor", "seasonalEventPassphraseColor");
-
-        migrateConfigKey("bingoDateTimeColor", "seasonalEventDateTimeColor");
-
-        migrateConfigKey("bingoKeywordBackgroundColor", "seasonalEventPassphraseBackgroundColor");
-        migrateConfigKey("seasonalEventKeywordBackgroundColor", "seasonalEventPassphraseBackgroundColor");
-    }
-
-    private void migrateConfigKey(String oldKey, String newKey)
-    {
-        String existing = configManager.getConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, newKey);
-        if (existing != null)
-        {
-            return;
-        }
-        String legacy = configManager.getConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, oldKey);
+        String legacy = configManager.getConfiguration(LEGACY_CONFIG_GROUP, key);
         if (legacy == null)
         {
             return;
         }
-        configManager.setConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, newKey, legacy);
-        configManager.unsetConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, oldKey);
-        log.debug("Migrated config {} -> {}", oldKey, newKey);
+        if (configManager.getConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, key) == null)
+        {
+            configManager.setConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, key, legacy);
+            log.debug("Migrated config {}.{}", LEGACY_CONFIG_GROUP, key);
+        }
+        configManager.unsetConfiguration(LEGACY_CONFIG_GROUP, key);
     }
 
     @Provides

@@ -12,8 +12,8 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * Movable overlay that draws the Seasonal Event Passphrase
- * (API value when published, else config). It exists so the passphrase is
- * burned into submitted drop screenshots as proof they were taken during the event.
+ * (API value when published, else config). It exists so the passphrase shows in
+ * screenshots posted to the website, as proof they were taken during the event.
  */
 public class SeasonalEventPassphraseOverlay extends OverlayPanel
 {
@@ -24,12 +24,12 @@ public class SeasonalEventPassphraseOverlay extends OverlayPanel
     private static final int BETWEEN_PAD = 12;
 
     private final IronforgedClanEventsConfig config;
-    private final SeasonalCatalogService catalogService;
+    private final SeasonalEventService seasonalEventService;
 
-    public SeasonalEventPassphraseOverlay(IronforgedClanEventsConfig config, SeasonalCatalogService catalogService)
+    public SeasonalEventPassphraseOverlay(IronforgedClanEventsConfig config, SeasonalEventService seasonalEventService)
     {
         this.config = config;
-        this.catalogService = catalogService;
+        this.seasonalEventService = seasonalEventService;
         setPosition(OverlayPosition.TOP_CENTER);
         setMovable(true);
         setSnappable(true);
@@ -44,7 +44,7 @@ public class SeasonalEventPassphraseOverlay extends OverlayPanel
             return null;
         }
 
-        String passphrase = catalogService.resolveEventPassphrase(config);
+        String passphrase = seasonalEventService.resolveEventPassphrase(config);
         if (passphrase == null || passphrase.isEmpty())
         {
             return null;

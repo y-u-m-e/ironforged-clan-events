@@ -32,13 +32,12 @@ public class EventTeamSyncService
 
     private final IronforgedClanEventsConfig config;
     private final ConfigManager configManager;
-    private final SeasonalCatalogService catalogService;
+    private final SeasonalEventService seasonalEventService;
     private final OkHttpClient httpClient;
     private final Gson gson;
 
     private volatile long lastFetchTime;
     private volatile String lastStatus = "Team sync idle";
-    private volatile String lastError = "";
     /** From the last successful sync; empty until one succeeds. */
     private volatile String eventName = "";
     private volatile String rosterUpdatedAt = "";
@@ -49,14 +48,14 @@ public class EventTeamSyncService
     EventTeamSyncService(
         IronforgedClanEventsConfig config,
         ConfigManager configManager,
-        SeasonalCatalogService catalogService,
+        SeasonalEventService seasonalEventService,
         OkHttpClient httpClient,
         Gson gson
     )
     {
         this.config = config;
         this.configManager = configManager;
-        this.catalogService = catalogService;
+        this.seasonalEventService = seasonalEventService;
         this.httpClient = httpClient;
         this.gson = gson;
     }
@@ -64,11 +63,6 @@ public class EventTeamSyncService
     public String getLastStatus()
     {
         return lastStatus;
-    }
-
-    public String getLastError()
-    {
-        return lastError;
     }
 
     public String getEventName()
@@ -92,7 +86,6 @@ public class EventTeamSyncService
     {
         lastFetchTime = 0;
         lastStatus = "Team sync idle";
-        lastError = "";
         eventName = "";
         rosterUpdatedAt = "";
     }
@@ -120,12 +113,11 @@ public class EventTeamSyncService
             return false;
         }
 
-        String eventId = catalogService.resolveEventId(config);
+        String eventId = seasonalEventService.resolveEventId(config);
         String base = EventsApiService.API_BASE + "/plugins/seasonal/teams";
         HttpUrl url = HttpUrl.parse(base);
         if (url == null)
         {
-            lastError = "bad url";
             lastStatus = "Team sync failed: bad url";
             return false;
         }
@@ -141,7 +133,7 @@ public class EventTeamSyncService
             .header("Accept", "application/json")
             .get();
 
-        String passphrase = catalogService.resolveEventPassphrase(config);
+        String passphrase = seasonalEventService.resolveEventPassphrase(config);
         if (!passphrase.isEmpty())
         {
             req.header("X-Event-Passphrase", passphrase);
@@ -152,16 +144,14 @@ public class EventTeamSyncService
             lastFetchTime = System.currentTimeMillis();
             if (!response.isSuccessful() || response.body() == null)
             {
-                lastError = "HTTP " + response.code();
-                lastStatus = "Team sync failed: " + lastError;
-                log.warn("Team roster sync failed: {}", lastError);
+                lastStatus = "Team sync failed: HTTP " + response.code();
+                log.warn("{}", lastStatus);
                 return false;
             }
 
             JsonObject root = gson.fromJson(response.body().string(), JsonObject.class);
             if (root == null)
             {
-                lastError = "empty payload";
                 lastStatus = "Team sync failed: empty payload";
                 return false;
             }
@@ -171,7 +161,6 @@ public class EventTeamSyncService
                 : null;
             if (teams == null || teams.size() == 0)
             {
-                lastError = "no teams";
                 lastStatus = "Team sync: API returned no teams";
                 return false;
             }
@@ -196,7 +185,6 @@ public class EventTeamSyncService
 
             if (syncedTeams.isEmpty())
             {
-                lastError = "unparseable teams";
                 lastStatus = "Team sync failed: could not parse teams";
                 return false;
             }
@@ -213,28 +201,37 @@ public class EventTeamSyncService
             }
             if (applied == 0)
             {
-                lastError = "no usable slots";
                 lastStatus = "Team sync failed: no teams in slots 1-" + EventTeamService.MAX_TEAMS;
                 log.warn("Team roster sync returned {} team(s), none in range", syncedTeams.size());
                 return false;
             }
 
-            lastError = "";
             eventName = text(root, "event_name");
             rosterUpdatedAt = text(root, "updated_at");
             String apiEvent = text(root, "event_id");
-            lastStatus = "Synced " + applied + " team(s)"
+            lastStatus = syncedLabel(applied, syncedTeams)
                 + (apiEvent.isEmpty() ? "" : " · " + apiEvent);
             log.debug("Team roster sync applied {} teams", applied);
             return true;
         }
         catch (Exception e)
         {
-            lastError = e.getMessage() == null ? "error" : e.getMessage();
-            lastStatus = "Team sync failed: " + lastError;
-            log.warn("Team roster sync error: {}", lastError);
+            lastStatus = "Team sync failed: " + (e.getMessage() == null ? "error" : e.getMessage());
+            log.warn("{}", lastStatus);
             return false;
         }
+    }
+
+    /** Says so when the API sent teams in slots the plugin cannot show. */
+    static String syncedLabel(int applied, List<SyncedTeam> teams)
+    {
+        long aboveMax = teams.stream().filter(t -> t.slot > EventTeamService.MAX_TEAMS).count();
+        if (aboveMax == 0)
+        {
+            return "Synced " + applied + " team(s)";
+        }
+        return "Synced " + applied + " of " + teams.size() + " teams (slots above "
+            + EventTeamService.MAX_TEAMS + " ignored)";
     }
 
     /**
