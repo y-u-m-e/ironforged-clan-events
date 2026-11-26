@@ -175,6 +175,18 @@ public interface IronforgedClanEventsConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "showOverlay",
+        name = "Show next event overlay",
+        description = "Display the next event (and the live one) on the game screen. Needs Load clan events; drag to reposition",
+        section = panelSection,
+        position = 2
+    )
+    default boolean showOverlay()
+    {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = "maxEventsShown",
         name = "Max Events Shown",
         description = "Maximum number of events to show in the panel (scroll for more)",

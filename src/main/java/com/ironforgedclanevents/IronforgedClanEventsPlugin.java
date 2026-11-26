@@ -85,6 +85,7 @@ public class IronforgedClanEventsPlugin extends Plugin
     static final int MIN_ROSTER_INTERVAL = 15;
 
     private SeasonalEventPassphraseOverlay passphraseOverlay;
+    private NextEventOverlay nextEventOverlay;
     /** Set and cleared on the EDT, read from executor threads: copy to a local before use. */
     private volatile IronforgedClanEventsPanel panel;
     private NavigationButton navButton;
@@ -103,9 +104,12 @@ public class IronforgedClanEventsPlugin extends Plugin
         migrateConfigKey(configManager, "maxEventsShown");
         migrateConfigKey(configManager, "showPastEvents");
         migrateConfigKey(configManager, "refreshInterval");
+        migrateConfigKey(configManager, "showOverlay");
 
         passphraseOverlay = new SeasonalEventPassphraseOverlay(config, seasonalEventService);
         overlayManager.add(passphraseOverlay);
+        nextEventOverlay = new NextEventOverlay(config, eventsApiService);
+        overlayManager.add(nextEventOverlay);
         overlayManager.add(eventTeamOverlay);
 
         panel = new IronforgedClanEventsPanel(
@@ -145,6 +149,7 @@ public class IronforgedClanEventsPlugin extends Plugin
         log.info("Ironforged Clan Events plugin stopped");
 
         overlayManager.remove(passphraseOverlay);
+        overlayManager.remove(nextEventOverlay);
         overlayManager.remove(eventTeamOverlay);
         clientToolbar.removeNavigation(navButton);
         seasonalEventService.clear();
@@ -154,6 +159,7 @@ public class IronforgedClanEventsPlugin extends Plugin
 
         initialized = false;
         passphraseOverlay = null;
+        nextEventOverlay = null;
         panel = null;
         navButton = null;
     }
