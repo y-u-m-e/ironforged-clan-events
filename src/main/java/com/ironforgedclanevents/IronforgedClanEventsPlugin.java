@@ -147,6 +147,10 @@ public class IronforgedClanEventsPlugin extends Plugin
         overlayManager.remove(passphraseOverlay);
         overlayManager.remove(nextEventOverlay);
         clientToolbar.removeNavigation(navButton);
+        if (panel != null)
+        {
+            panel.closeEventDialog();
+        }
         seasonalEventService.clear();
         eventsApiService.clearEvents();
         eventTeamSyncService.reset();

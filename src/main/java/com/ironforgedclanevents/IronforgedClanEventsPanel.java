@@ -70,7 +70,6 @@ public class IronforgedClanEventsPanel extends PluginPanel
         new Color(158, 158, 158),
         new Color(108, 108, 108),
     };
-    private static final Color LINK_COLOR = new Color(100, 180, 255);
     private static final Color TEXT_COLOR = Color.WHITE;
     private static final Color SECONDARY_TEXT = ColorScheme.LIGHT_GRAY_COLOR;
     private static final Color MUTED_TEXT = new Color(140, 140, 140);
@@ -86,10 +85,9 @@ public class IronforgedClanEventsPanel extends PluginPanel
 
     private static final int RAIL_WIDTH = 14;
     private static final int NODE_SIZE = 8;
-    private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH;
     private static final int TEXT_WIDTH = PluginPanel.PANEL_WIDTH - RAIL_WIDTH - 20;
     private static final int SIDE_PAD = 6;
-    private static final int MAX_DESC_LENGTH = 280;
+    private static final int DIALOG_TEXT_WIDTH = 280;
 
     private final IronforgedClanEventsConfig config;
     private final ConfigManager configManager;
@@ -118,8 +116,8 @@ public class IronforgedClanEventsPanel extends PluginPanel
     private HealthDot healthDot;
     private JTabbedPane tabs;
 
-    /** Identity of the expanded timeline row, or null. */
-    private String expandedEventKey;
+    /** The open event details window, reused so clicking another event replaces it. */
+    private JDialog eventDialog;
 
     /** Viewport width used when rows were last built; triggers rebuild when it changes. */
     private int laidOutViewportWidth;
@@ -1362,13 +1360,6 @@ public class IronforgedClanEventsPanel extends PluginPanel
         }
     }
 
-    private String eventKey(ClanEvent event)
-    {
-        return Objects.toString(event.getName(), "")
-            + "|"
-            + Objects.toString(event.getDateTime(), "");
-    }
-
     private EventTone eventTone(ClanEvent event, boolean isLive, boolean past)
     {
         boolean happening = isLive || (event != null && event.isHappeningNow());
@@ -1439,7 +1430,6 @@ public class IronforgedClanEventsPanel extends PluginPanel
         boolean connectBottom
     )
     {
-        boolean expanded = Objects.equals(expandedEventKey, eventKey(event));
         boolean isHappening = isLive || event.isHappeningNow();
         boolean isImminent = !past && event.isImminent();
         EventTone tone = eventTone(event, isLive, past);
@@ -1483,7 +1473,7 @@ public class IronforgedClanEventsPanel extends PluginPanel
         nameLabel.setToolTipText(plainLabelText(name));
         nameRow.add(nameLabel, BorderLayout.CENTER);
 
-        JLabel chevron = new JLabel(expanded ? "▾" : "▸");
+        JLabel chevron = new JLabel("›");
         chevron.setFont(FontManager.getRunescapeSmallFont());
         chevron.setForeground(MUTED_TEXT);
         nameRow.add(chevron, BorderLayout.EAST);
@@ -1497,23 +1487,14 @@ public class IronforgedClanEventsPanel extends PluginPanel
         metaLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         body.add(metaLabel);
 
-        if (!expanded)
+        String host = event.getHost();
+        if (host != null && !host.trim().isEmpty() && (isHappening || isNext))
         {
-            String host = event.getHost();
-            if (host != null && !host.trim().isEmpty() && (isHappening || isNext))
-            {
-                JLabel hostPeek = new JLabel(plainLabelText(host.trim()));
-                hostPeek.setFont(FontManager.getRunescapeSmallFont());
-                hostPeek.setForeground(MUTED_TEXT);
-                hostPeek.setAlignmentX(Component.LEFT_ALIGNMENT);
-                body.add(hostPeek);
-            }
-        }
-
-        if (expanded)
-        {
-            body.add(Box.createVerticalStrut(4));
-            body.add(createExpandedDetails(event));
+            JLabel hostPeek = new JLabel(plainLabelText(host.trim()));
+            hostPeek.setFont(FontManager.getRunescapeSmallFont());
+            hostPeek.setForeground(MUTED_TEXT);
+            hostPeek.setAlignmentX(Component.LEFT_ALIGNMENT);
+            body.add(hostPeek);
         }
 
         row.add(body, BorderLayout.CENTER);
@@ -1528,9 +1509,7 @@ public class IronforgedClanEventsPanel extends PluginPanel
             @Override
             public void mouseClicked(MouseEvent e)
             {
-                String key = eventKey(event);
-                expandedEventKey = Objects.equals(expandedEventKey, key) ? null : key;
-                updateEvents();
+                showEventDialog(event, accent);
             }
 
             @Override
@@ -1629,74 +1608,102 @@ public class IronforgedClanEventsPanel extends PluginPanel
         }
     }
 
-    private JPanel createExpandedDetails(ClanEvent event)
+    /**
+     * Opens (or replaces) a small details window for one event: name, day and time, host,
+     * location, the full description and its link.
+     */
+    private void showEventDialog(ClanEvent event, Color accent)
     {
-        JPanel details = new JPanel();
-        details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
-        details.setBackground(BACKGROUND_COLOR);
-        details.setAlignmentX(Component.LEFT_ALIGNMENT);
-        details.setBorder(new EmptyBorder(2, 0, 0, 0));
-        details.setMaximumSize(new Dimension(CONTENT_WIDTH, Short.MAX_VALUE));
+        if (eventDialog != null)
+        {
+            eventDialog.dispose();
+        }
 
-        if (event.getHost() != null && !event.getHost().isEmpty())
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        String name = event.getName() == null ? "Untitled" : event.getName();
+        JDialog dialog = new JDialog(owner, plainLabelText(name), Dialog.ModalityType.MODELESS);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBackground(BACKGROUND_COLOR);
+        content.setBorder(new EmptyBorder(12, 14, 12, 14));
+
+        JLabel title = new JLabel("<html><body style='width:" + DIALOG_TEXT_WIDTH + "px'>"
+            + escapeHtml(name) + "</body></html>");
+        title.setFont(FontManager.getRunescapeBoldFont());
+        title.setForeground(accent);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        content.add(title);
+        content.add(Box.createVerticalStrut(4));
+
+        JLabel when = detailLine(plainLabelText(event.getDayBlockHeader()));
+        when.setForeground(TEXT_COLOR);
+        content.add(when);
+        content.add(detailLine(plainLabelText(event.getTimelineMetaLine())));
+
+        if (event.getHost() != null && !event.getHost().trim().isEmpty())
         {
-            details.add(detailLine(plainLabelText("Host  " + event.getHost())));
+            content.add(detailLine(plainLabelText("Host  " + event.getHost().trim())));
         }
-        if (event.getLocation() != null && !event.getLocation().isEmpty())
+        if (event.getLocation() != null && !event.getLocation().trim().isEmpty())
         {
-            details.add(detailLine(plainLabelText("At  " + event.getLocation())));
+            content.add(detailLine(plainLabelText("At  " + event.getLocation().trim())));
         }
-        if (event.getDescription() != null && !event.getDescription().isEmpty())
+
+        if (event.getDescription() != null && !event.getDescription().trim().isEmpty())
         {
-            String desc = event.getDescription();
-            String full = desc;
-            if (desc.length() > MAX_DESC_LENGTH)
-            {
-                desc = desc.substring(0, MAX_DESC_LENGTH) + "…";
-            }
-            JLabel descLabel = new JLabel("<html><body style='width:" + (TEXT_WIDTH - 20)
-                + "px;color:#c8c8c8'>" + escapeHtml(desc) + "</body></html>");
-            descLabel.setFont(FontManager.getRunescapeSmallFont());
-            descLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-            if (full.length() > MAX_DESC_LENGTH)
-            {
-                descLabel.setToolTipText("<html><body style='width:280px'>"
-                    + escapeHtml(full) + "</body></html>");
-            }
-            details.add(Box.createVerticalStrut(3));
-            details.add(descLabel);
+            content.add(Box.createVerticalStrut(8));
+            JTextArea desc = new JTextArea(event.getDescription().trim());
+            desc.setEditable(false);
+            desc.setLineWrap(true);
+            desc.setWrapStyleWord(true);
+            desc.setFont(FontManager.getRunescapeSmallFont());
+            desc.setForeground(SECONDARY_TEXT);
+            desc.setBackground(PANEL_COLOR);
+            desc.setBorder(new EmptyBorder(6, 8, 6, 8));
+            desc.setCaretPosition(0);
+            JScrollPane descScroll = new JScrollPane(desc);
+            descScroll.setBorder(BorderFactory.createEmptyBorder());
+            descScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+            descScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+            descScroll.setPreferredSize(new Dimension(DIALOG_TEXT_WIDTH, 160));
+            content.add(descScroll);
         }
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        buttons.setOpaque(false);
+        buttons.setAlignmentX(Component.LEFT_ALIGNMENT);
         if (event.hasUrl())
         {
-            details.add(Box.createVerticalStrut(4));
-            JLabel linkLabel = new JLabel("Open link ›");
-            linkLabel.setFont(FontManager.getRunescapeSmallFont());
-            linkLabel.setForeground(LINK_COLOR);
-            linkLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            linkLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-            linkLabel.addMouseListener(new MouseAdapter()
-            {
-                @Override
-                public void mouseClicked(MouseEvent e)
-                {
-                    LinkBrowser.browse(event.getUrl().trim());
-                }
-
-                @Override
-                public void mouseEntered(MouseEvent e)
-                {
-                    linkLabel.setText("<html><u>Open link ›</u></html>");
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e)
-                {
-                    linkLabel.setText("Open link ›");
-                }
-            });
-            details.add(linkLabel);
+            buttons.add(createPanelButton("Open link", "Open the event link in your browser",
+                e -> LinkBrowser.browse(event.getUrl().trim())));
         }
-        return details;
+        buttons.add(createPanelButton("Close", null, e -> dialog.dispose()));
+        content.add(Box.createVerticalStrut(10));
+        content.add(buttons);
+
+        dialog.getRootPane().registerKeyboardAction(e -> dialog.dispose(),
+            KeyStroke.getKeyStroke("ESCAPE"), JComponent.WHEN_IN_FOCUSED_WINDOW);
+        dialog.setContentPane(content);
+        dialog.pack();
+        dialog.setResizable(false);
+        dialog.setLocationRelativeTo(this);
+        eventDialog = dialog;
+        dialog.setVisible(true);
+    }
+
+    /** Closes the event details window, if open. Safe to call from any thread. */
+    public void closeEventDialog()
+    {
+        SwingUtilities.invokeLater(() ->
+        {
+            if (eventDialog != null)
+            {
+                eventDialog.dispose();
+                eventDialog = null;
+            }
+        });
     }
 
     private JLabel detailLine(String text)
