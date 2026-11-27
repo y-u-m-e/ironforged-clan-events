@@ -117,7 +117,7 @@ public interface IronforgedClanEventsConfig extends Config
         name = "Show event passphrase",
         description = "Draw the Seasonal Event Passphrase you enter below on the game screen (drag to reposition)",
         section = overlaySection,
-        position = 1
+        position = 3
     )
     default boolean showSeasonalEventPassphrase()
     {
@@ -129,7 +129,7 @@ public interface IronforgedClanEventsConfig extends Config
         name = "Seasonal Event Passphrase",
         description = "The passphrase staff announce for this season, shown on the passphrase overlay",
         section = overlaySection,
-        position = 2
+        position = 4
     )
     default String seasonalEventPassphrase()
     {
@@ -141,7 +141,7 @@ public interface IronforgedClanEventsConfig extends Config
         name = "Show Date & Time",
         description = "Show the current local date and time beside the Seasonal Event Passphrase",
         section = overlaySection,
-        position = 3
+        position = 5
     )
     default boolean showSeasonalEventDateTime()
     {
@@ -153,7 +153,7 @@ public interface IronforgedClanEventsConfig extends Config
         name = "Passphrase Color",
         description = "Color of the Seasonal Event Passphrase text",
         section = overlaySection,
-        position = 4
+        position = 6
     )
     default Color seasonalEventPassphraseColor()
     {
@@ -165,7 +165,7 @@ public interface IronforgedClanEventsConfig extends Config
         name = "Date & Time Color",
         description = "Color of the date and time text",
         section = overlaySection,
-        position = 5
+        position = 7
     )
     default Color seasonalEventDateTimeColor()
     {
@@ -177,7 +177,7 @@ public interface IronforgedClanEventsConfig extends Config
         name = "Background Color",
         description = "Background color behind the Seasonal Event Passphrase",
         section = overlaySection,
-        position = 6
+        position = 8
     )
     default Color seasonalEventPassphraseBackgroundColor()
     {
@@ -206,6 +206,49 @@ public interface IronforgedClanEventsConfig extends Config
         position = 0
     )
     default boolean showOverlay()
+    {
+        return true;
+    }
+
+    enum NextEventStyle
+    {
+        COMPACT("Compact"),
+        VERBOSE("Verbose");
+
+        private final String label;
+
+        NextEventStyle(String label)
+        {
+            this.label = label;
+        }
+
+        @Override
+        public String toString()
+        {
+            return label;
+        }
+    }
+
+    @ConfigItem(
+        keyName = "nextEventStyle",
+        name = "Next event style",
+        description = "Compact: one line per event. Verbose: title, name and countdown on separate lines",
+        section = overlaySection,
+        position = 1
+    )
+    default NextEventStyle nextEventStyle()
+    {
+        return NextEventStyle.VERBOSE;
+    }
+
+    @ConfigItem(
+        keyName = "nextEventShowSpotlights",
+        name = "Show SOTW/BOTW",
+        description = "Include Skill and Boss of the Week on the next event overlay. They run all week, so they otherwise sit in the live slot",
+        section = overlaySection,
+        position = 2
+    )
+    default boolean nextEventShowSpotlights()
     {
         return true;
     }

@@ -45,12 +45,12 @@ public class NextEventOverlay extends OverlayPanel
     }
 
     /** The upcoming event that starts soonest, or null. */
-    static ClanEvent pickNext(List<ClanEvent> events)
+    static ClanEvent pickNext(List<ClanEvent> events, boolean spotlights)
     {
         ClanEvent best = null;
         for (ClanEvent e : events)
         {
-            if (e.isUpcoming() && (best == null || e.compareTo(best) < 0))
+            if (e.isUpcoming() && (spotlights || !e.isWeeklySpotlight()) && (best == null || e.compareTo(best) < 0))
             {
                 best = e;
             }
@@ -59,12 +59,12 @@ public class NextEventOverlay extends OverlayPanel
     }
 
     /** The running event that started first, or null. */
-    static ClanEvent pickLive(List<ClanEvent> events)
+    static ClanEvent pickLive(List<ClanEvent> events, boolean spotlights)
     {
         ClanEvent best = null;
         for (ClanEvent e : events)
         {
-            if (e.isHappeningNow() && (best == null || e.compareTo(best) < 0))
+            if (e.isHappeningNow() && (spotlights || !e.isWeeklySpotlight()) && (best == null || e.compareTo(best) < 0))
             {
                 best = e;
             }
@@ -72,7 +72,28 @@ public class NextEventOverlay extends OverlayPanel
         return best;
     }
 
-    /** Old box layout: live block (Active Event, name, NOW!) then next block (title, name, countdown). */
+    /** Compact: one line per event, "Name · now" and "Name · in 1h 5m". */
+    static List<WrappedText.Segment> buildCompactSegments(ClanEvent live, ClanEvent next)
+    {
+        List<WrappedText.Segment> out = new ArrayList<>();
+        if (live != null)
+        {
+            out.add(new WrappedText.Segment(displayName(live) + " · now", ACTIVE));
+        }
+        if (next != null)
+        {
+            Color color = next.isImminent() ? IMMINENT : ACCENT;
+            out.add(new WrappedText.Segment(displayName(next) + " · in " + next.getTimeUntil(), color));
+        }
+        return out;
+    }
+
+    private static String displayName(ClanEvent e)
+    {
+        return e.getName() == null || e.getName().isEmpty() ? "Event" : e.getName();
+    }
+
+    /** Verbose (the old box): live block (Active Event, name, NOW!) then next block (title, name, countdown). */
     static List<WrappedText.Segment> buildSegments(ClanEvent live, ClanEvent next)
     {
         List<WrappedText.Segment> out = new ArrayList<>();
@@ -114,7 +135,12 @@ public class NextEventOverlay extends OverlayPanel
         {
             builtAt = now;
             List<ClanEvent> events = eventsApiService.getCachedEvents();
-            segments = buildSegments(pickLive(events), pickNext(events));
+            boolean spotlights = config.nextEventShowSpotlights();
+            ClanEvent live = pickLive(events, spotlights);
+            ClanEvent next = pickNext(events, spotlights);
+            segments = config.nextEventStyle() == IronforgedClanEventsConfig.NextEventStyle.COMPACT
+                ? buildCompactSegments(live, next)
+                : buildSegments(live, next);
         }
         if (segments.isEmpty())
         {
