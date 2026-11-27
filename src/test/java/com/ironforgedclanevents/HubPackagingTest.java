@@ -55,6 +55,9 @@ public class HubPackagingTest
         }
         String displayName = properties.getProperty("displayName");
         assertTrue("displayName is set", displayName != null && !displayName.trim().isEmpty());
+        String build = properties.getProperty("build");
+        assertTrue("build= must be standard or gradle (the Hub packager requires it)",
+            "standard".equals(build) || "gradle".equals(build));
         String plugins = properties.getProperty("plugins");
         assertNotNull("plugins= is set", plugins);
         for (String className : plugins.split(","))
