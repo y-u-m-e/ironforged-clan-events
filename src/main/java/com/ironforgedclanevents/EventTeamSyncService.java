@@ -6,6 +6,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -13,11 +15,13 @@ import okhttp3.Response;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Opt-in sync of event team rosters from {@code GET /plugins/seasonal/teams}.
@@ -97,16 +101,57 @@ public class EventTeamSyncService
     }
 
     /**
-     * Fetch and apply team roster. Safe to call off the client thread.
-     *
-     * @return true if local config was updated
+     * Fetch and apply the team roster. The request runs on OkHttp's own threads, never the client
+     * thread or RuneLite's shared executor. {@code done} gets true if local config was updated.
      */
-    public synchronized boolean syncNow()
+    public void syncNow(Consumer<Boolean> done)
+    {
+        Request request = buildRequest();
+        if (request == null)
+        {
+            done.accept(false);
+            return;
+        }
+        httpClient.newCall(request).enqueue(new Callback()
+        {
+            @Override
+            public void onFailure(Call call, IOException e)
+            {
+                fail(e);
+                done.accept(false);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response)
+            {
+                boolean updated;
+                try (Response r = response)
+                {
+                    updated = handleResponse(r);
+                }
+                catch (Exception e)
+                {
+                    fail(e);
+                    updated = false;
+                }
+                done.accept(updated);
+            }
+        });
+    }
+
+    private void fail(Exception e)
+    {
+        lastStatus = "Team sync failed: " + (e.getMessage() == null ? "error" : e.getMessage());
+        logFailure();
+    }
+
+    /** The roster request, or null when sync is off or not set up (lastStatus says why). */
+    private Request buildRequest()
     {
         if (!config.enableTeamRosterSync())
         {
             lastStatus = "Team sync disabled";
-            return false;
+            return null;
         }
 
         // The typed event id is the key: the API returns an empty roster without it, so don't ask.
@@ -114,105 +159,101 @@ public class EventTeamSyncService
         if (eventId.isEmpty())
         {
             lastStatus = "Enter the Seasonal Event ID to sync teams";
-            return false;
+            return null;
         }
         String base = EventsApiService.API_BASE + "/plugins/seasonal/teams";
         HttpUrl url = HttpUrl.parse(base);
         if (url == null)
         {
             lastStatus = "Team sync failed: bad url";
-            return false;
+            return null;
         }
         HttpUrl.Builder urlBuilder = url.newBuilder().addQueryParameter("event_id", eventId);
 
-        Request.Builder req = new Request.Builder()
+        return new Request.Builder()
             .url(urlBuilder.build())
             .header("User-Agent", "RuneLite-IronforgedClanEvents")
             .header("Accept", "application/json")
-            .get();
+            .get()
+            .build();
+    }
 
-        try (Response response = httpClient.newCall(req.build()).execute())
+    /** Parses and applies one roster response. Synchronized so two responses never apply at once. */
+    private synchronized boolean handleResponse(Response response) throws IOException
+    {
+        if (!response.isSuccessful() || response.body() == null)
         {
-            if (!response.isSuccessful() || response.body() == null)
-            {
-                lastStatus = "Team sync failed: HTTP " + response.code();
-                logFailure();
-                return false;
-            }
-            // A response arrived; payload problems below are not retried faster than the interval.
-            backoff.succeeded(System.currentTimeMillis());
-
-            JsonObject root = gson.fromJson(response.body().string(), JsonObject.class);
-            if (root == null)
-            {
-                lastStatus = "Team sync failed: empty payload";
-                return false;
-            }
-
-            JsonArray teams = root.has("teams") && root.get("teams").isJsonArray()
-                ? root.getAsJsonArray("teams")
-                : null;
-            if (teams == null || teams.size() == 0)
-            {
-                lastStatus = "Team sync: API returned no teams";
-                return false;
-            }
-
-            List<SyncedTeam> syncedTeams = new ArrayList<>();
-            for (JsonElement el : teams)
-            {
-                if (!el.isJsonObject())
-                {
-                    continue;
-                }
-                SyncedTeam team = parseTeam(el.getAsJsonObject(), syncedTeams.size() + 1);
-                if (team != null)
-                {
-                    syncedTeams.add(team);
-                }
-                if (syncedTeams.size() >= MAX_API_TEAMS)
-                {
-                    break;
-                }
-            }
-
-            if (syncedTeams.isEmpty())
-            {
-                lastStatus = "Team sync failed: could not parse teams";
-                return false;
-            }
-
-            int applied;
-            applying = true;
-            try
-            {
-                applied = applyTeams(syncedTeams);
-            }
-            finally
-            {
-                applying = false;
-            }
-            if (applied == 0)
-            {
-                lastStatus = "Team sync failed: no teams in slots 1-" + EventTeamService.MAX_TEAMS;
-                log.warn("Team roster sync returned {} team(s), none in range", syncedTeams.size());
-                return false;
-            }
-
-            eventName = text(root, "event_name");
-            rosterUpdatedAt = text(root, "updated_at");
-            String apiEvent = text(root, "event_id");
-            lastStatus = syncedLabel(applied, syncedTeams)
-                + (apiEvent.isEmpty() ? "" : " · " + apiEvent);
-            log.debug("Team roster sync applied {} teams", applied);
-            return true;
-        }
-        catch (Exception e)
-        {
-            lastStatus = "Team sync failed: " + (e.getMessage() == null ? "error" : e.getMessage());
+            lastStatus = "Team sync failed: HTTP " + response.code();
             logFailure();
             return false;
         }
+        // A response arrived; payload problems below are not retried faster than the interval.
+        backoff.succeeded(System.currentTimeMillis());
+
+        JsonObject root = gson.fromJson(response.body().string(), JsonObject.class);
+        if (root == null)
+        {
+            lastStatus = "Team sync failed: empty payload";
+            return false;
+        }
+
+        JsonArray teams = root.has("teams") && root.get("teams").isJsonArray()
+            ? root.getAsJsonArray("teams")
+            : null;
+        if (teams == null || teams.size() == 0)
+        {
+            lastStatus = "Team sync: API returned no teams";
+            return false;
+        }
+
+        List<SyncedTeam> syncedTeams = new ArrayList<>();
+        for (JsonElement el : teams)
+        {
+            if (!el.isJsonObject())
+            {
+                continue;
+            }
+            SyncedTeam team = parseTeam(el.getAsJsonObject(), syncedTeams.size() + 1);
+            if (team != null)
+            {
+                syncedTeams.add(team);
+            }
+            if (syncedTeams.size() >= MAX_API_TEAMS)
+            {
+                break;
+            }
+        }
+
+        if (syncedTeams.isEmpty())
+        {
+            lastStatus = "Team sync failed: could not parse teams";
+            return false;
+        }
+
+        int applied;
+        applying = true;
+        try
+        {
+            applied = applyTeams(syncedTeams);
+        }
+        finally
+        {
+            applying = false;
+        }
+        if (applied == 0)
+        {
+            lastStatus = "Team sync failed: no teams in slots 1-" + EventTeamService.MAX_TEAMS;
+            log.warn("Team roster sync returned {} team(s), none in range", syncedTeams.size());
+            return false;
+        }
+
+        eventName = text(root, "event_name");
+        rosterUpdatedAt = text(root, "updated_at");
+        String apiEvent = text(root, "event_id");
+        lastStatus = syncedLabel(applied, syncedTeams)
+            + (apiEvent.isEmpty() ? "" : " · " + apiEvent);
+        log.debug("Team roster sync applied {} teams", applied);
+        return true;
     }
 
     private void logFailure()

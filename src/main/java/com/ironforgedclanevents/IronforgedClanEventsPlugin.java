@@ -29,7 +29,6 @@ import net.runelite.client.util.ImageUtil;
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -68,9 +67,6 @@ public class IronforgedClanEventsPlugin extends Plugin
     private EventTeamSyncService eventTeamSyncService;
 
     @Inject
-    private ScheduledExecutorService executorService;
-
-    @Inject
     private Client client;
 
     /** Config group of the Plugin Hub build before the rename (8d48b19). */
@@ -85,6 +81,7 @@ public class IronforgedClanEventsPlugin extends Plugin
     private NavigationButton navButton;
     private volatile boolean initialized = false;
     private final AtomicBoolean eventsFetchInFlight = new AtomicBoolean();
+    private final AtomicBoolean syncInFlight = new AtomicBoolean();
     /** Client thread only. True from the login screen / hop / reconnect until the next LOGGED_IN. */
     private boolean loginPending;
     /** Client thread only. Clan / friends chat membership changed; recount once on the next tick. */
@@ -99,6 +96,7 @@ public class IronforgedClanEventsPlugin extends Plugin
         migrateConfigKey(configManager, "showPastEvents");
         migrateConfigKey(configManager, "refreshInterval");
         migrateConfigKey(configManager, "showOverlay");
+        migrateSimpleOverlay(configManager);
 
         passphraseOverlay = new SeasonalEventPassphraseOverlay(config);
         overlayManager.add(passphraseOverlay);
@@ -372,7 +370,6 @@ public class IronforgedClanEventsPlugin extends Plugin
             return;
         }
 
-
         if (config.enableTeamRosterSync() && eventTeamSyncService.needsRefresh(rosterInterval()))
         {
             syncTeams();
@@ -420,12 +417,21 @@ public class IronforgedClanEventsPlugin extends Plugin
             p.showLoading();
         }
 
-        executorService.submit(() ->
+        eventsApiService.fetchEvents(manual, ok ->
         {
             try
             {
-                boolean ok = eventsApiService.fetchEvents(manual);
                 IronforgedClanEventsPanel current = panel;
+                if (!initialized || !config.enableEventsFeed())
+                {
+                    // Turned off or shut down mid-fetch: drop what the fetch just stored.
+                    eventsApiService.clearEvents();
+                    if (current != null)
+                    {
+                        current.updateEvents();
+                    }
+                    return;
+                }
                 if (current == null)
                 {
                     return;
@@ -458,27 +464,34 @@ public class IronforgedClanEventsPlugin extends Plugin
 
     public void syncTeams()
     {
-        if (!initialized)
+        // One sync at a time: repeated Sync clicks would otherwise queue requests.
+        if (!initialized || !syncInFlight.compareAndSet(false, true))
         {
             return;
         }
 
-        executorService.submit(() ->
+        eventTeamSyncService.syncNow(updated ->
         {
-            boolean updated = eventTeamSyncService.syncNow();
-            if (updated)
-            {
-                // Per-key handling was skipped while applying; rebuild the roster once.
-                eventTeamService.refreshSurfaces();
-            }
-            IronforgedClanEventsPanel p = panel;
-            if (p != null)
+            try
             {
                 if (updated)
                 {
-                    p.rebuildTeamsUi();
+                    // Per-key handling was skipped while applying; rebuild the roster once.
+                    eventTeamService.refreshSurfaces();
                 }
-                p.updateTeamsSyncLabel();
+                IronforgedClanEventsPanel p = panel;
+                if (p != null)
+                {
+                    if (updated)
+                    {
+                        p.rebuildTeamsUi();
+                    }
+                    p.updateTeamsSyncLabel();
+                }
+            }
+            finally
+            {
+                syncInFlight.set(false);
             }
         });
     }
@@ -569,6 +582,23 @@ public class IronforgedClanEventsPlugin extends Plugin
             log.debug("Migrated config {}.{}", LEGACY_CONFIG_GROUP, key);
         }
         configManager.unsetConfiguration(LEGACY_CONFIG_GROUP, key);
+    }
+
+    /** The old plugin's "Simple Overlay" switch is the Compact style now. */
+    static void migrateSimpleOverlay(ConfigManager configManager)
+    {
+        String legacy = configManager.getConfiguration(LEGACY_CONFIG_GROUP, "simpleOverlay");
+        if (legacy == null)
+        {
+            return;
+        }
+        if (Boolean.parseBoolean(legacy)
+            && configManager.getConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, "nextEventStyle") == null)
+        {
+            configManager.setConfiguration(IronforgedClanEventsConfig.CONFIG_GROUP, "nextEventStyle",
+                IronforgedClanEventsConfig.NextEventStyle.COMPACT.name());
+        }
+        configManager.unsetConfiguration(LEGACY_CONFIG_GROUP, "simpleOverlay");
     }
 
     @Provides

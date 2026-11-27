@@ -27,7 +27,7 @@ Any feature that contacts a non-RuneLite server must be:
 2. Annotated with exact warning:  
    `"This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers"`
 
-`enableEventsFeed`, `showSeasonalEventPassphrase` and `enableTeamRosterSync` gate all HTTP. Do not fetch when the matching toggle is false.
+`enableEventsFeed` and `enableTeamRosterSync` (the Iron Forged API section) gate all HTTP, sent with OkHttp `enqueue()`. Do not fetch when the matching toggle is false. The passphrase overlay is local only.
 
 ## Config
 

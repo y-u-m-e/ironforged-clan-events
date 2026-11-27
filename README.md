@@ -58,7 +58,7 @@ https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts
 
 - **[Bingo Team Icons](https://github.com/gwigl/bingo-team-icons)** by gwig (BSD-2-Clause): the
   idea and approach for the event team badges, coloured clan icons next to rostered players in
-  chat, on the friends and clan lists, and above their heads.
+  chat and on the friends and clan lists.
 - **[Friend Notes](https://github.com/runelite/runelite/tree/master/runelite-client/src/main/java/net/runelite/client/plugins/friendnotes)**,
   part of RuneLite (BSD-2-Clause): the friends and clan list icon layout, a 14×12 icon after the
   name with the row shifted to make room.

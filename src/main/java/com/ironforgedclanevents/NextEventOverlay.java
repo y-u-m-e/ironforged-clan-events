@@ -35,6 +35,7 @@ public class NextEventOverlay extends OverlayPanel
     private long builtAt;
     private boolean builtSpotlights;
     private IronforgedClanEventsConfig.NextEventStyle builtStyle;
+    private int widestLine = -1;
 
     public NextEventOverlay(IronforgedClanEventsConfig config, EventsApiService eventsApiService)
     {
@@ -147,6 +148,7 @@ public class NextEventOverlay extends OverlayPanel
             segments = style == IronforgedClanEventsConfig.NextEventStyle.COMPACT
                 ? buildCompactSegments(live, next)
                 : buildSegments(live, next);
+            widestLine = -1;
         }
         if (segments.isEmpty())
         {
@@ -162,13 +164,16 @@ public class NextEventOverlay extends OverlayPanel
         // Default width: the widest line, so the lines stack (segments only share a line when all fit).
         if (getPreferredSize() == null)
         {
-            FontMetrics metrics = graphics.getFontMetrics();
-            int widest = 0;
-            for (WrappedText.Segment s : segments)
+            if (widestLine < 0)
             {
-                widest = Math.max(widest, metrics.stringWidth(s.text()));
+                FontMetrics metrics = graphics.getFontMetrics();
+                widestLine = 0;
+                for (WrappedText.Segment s : segments)
+                {
+                    widestLine = Math.max(widestLine, metrics.stringWidth(s.text()));
+                }
             }
-            panelComponent.setPreferredSize(new Dimension(widest + 2 * ComponentConstants.STANDARD_BORDER, 0));
+            panelComponent.setPreferredSize(new Dimension(widestLine + 2 * ComponentConstants.STANDARD_BORDER, 0));
         }
 
         return super.render(graphics);

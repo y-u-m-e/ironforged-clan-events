@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -102,7 +104,7 @@ public class EventTeamSyncServiceTest
     }
 
     @Test
-    public void failedSyncIsNotRetriedBeforeTheBackoff()
+    public void failedSyncIsNotRetriedBeforeTheBackoff() throws Exception
     {
         AtomicInteger calls = new AtomicInteger();
         OkHttpClient down = new OkHttpClient.Builder()
@@ -129,7 +131,9 @@ public class EventTeamSyncServiceTest
         EventTeamSyncService service = new EventTeamSyncService(config, null, down, new com.google.gson.Gson());
 
         assertTrue(service.needsRefresh(5));
-        assertFalse(service.syncNow());
+        CompletableFuture<Boolean> result = new CompletableFuture<>();
+        service.syncNow(result::complete);
+        assertFalse(result.get(10, TimeUnit.SECONDS));
         assertEquals(1, calls.get());
         // The scheduler asks every minute; after a network error it must say not yet.
         assertFalse(service.needsRefresh(5));

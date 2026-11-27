@@ -39,7 +39,7 @@ public interface IronforgedClanEventsConfig extends Config
 
     @ConfigSection(
         name = "Teams",
-        description = "Colored team badges in chat, and friends/clan lists",
+        description = "Colored team badges in chat and the friends and clan lists",
         position = 3
     )
     String teamsSection = "teamsSection";
@@ -283,7 +283,7 @@ public interface IronforgedClanEventsConfig extends Config
     @ConfigItem(
         keyName = "enableTeamIcons",
         name = "Enable team icons",
-        description = "Show colored team badges for rostered players (edit rosters in the Teams side-panel tab)",
+        description = "Show colored team badges for rostered players (edit rosters in the Seasonal side-panel tab)",
         section = teamsSection,
         position = 0
     )
@@ -295,9 +295,9 @@ public interface IronforgedClanEventsConfig extends Config
     @ConfigItem(
         keyName = "teamCount",
         name = "Number of teams",
-        description = "How many teams to show in the Teams tab (1–10). Prefer editing from the Teams tab.",
+        description = "How many teams to show in the Seasonal tab (1–10). Prefer editing from the Seasonal tab.",
         section = teamsSection,
-        position = 2,
+        position = 1,
         hidden = true
     )
     @Range(min = 1, max = 10)
@@ -311,7 +311,7 @@ public interface IronforgedClanEventsConfig extends Config
         name = "Friends list icons",
         description = "Show team icons next to names on the friends list",
         section = teamsSection,
-        position = 4
+        position = 2
     )
     default boolean friendsListTeamIcons()
     {
@@ -323,7 +323,7 @@ public interface IronforgedClanEventsConfig extends Config
         name = "Clan member list icons",
         description = "Show team icons next to names in the clan and guest clan member lists",
         section = teamsSection,
-        position = 5
+        position = 3
     )
     default boolean clanListTeamIcons()
     {
@@ -335,7 +335,7 @@ public interface IronforgedClanEventsConfig extends Config
         name = "Broadcast icons",
         description = "Also show team icons on collection log and drop broadcasts in clan chat",
         section = teamsSection,
-        position = 6
+        position = 4
     )
     default boolean broadcastTeamIcons()
     {

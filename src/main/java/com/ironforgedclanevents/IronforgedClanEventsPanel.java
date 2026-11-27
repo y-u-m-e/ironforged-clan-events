@@ -1631,9 +1631,7 @@ public class IronforgedClanEventsPanel extends PluginPanel
         dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 
         // The hero is the one thing the list row can't show at a glance: how long until it starts.
-        String hero = event.isHappeningNow() ? "LIVE NOW"
-            : event.isUpcoming() ? "IN " + event.getTimeUntil().toUpperCase()
-            : "ENDED";
+        String hero = heroText(event);
         String time = event.isWeeklySpotlight() ? "All week" : event.getTimeRange();
 
         // Header band: event colour bar on top, a dark tint of it behind the text.
@@ -1735,8 +1733,30 @@ public class IronforgedClanEventsPanel extends PluginPanel
         dialog.pack();
         dialog.setResizable(false);
         dialog.setLocationRelativeTo(this);
+        // Keep the countdown live while the window is open; the text is minute-granular.
+        javax.swing.Timer tick = new javax.swing.Timer(30_000, e -> heroLabel.setText(plainLabelText(heroText(event))));
+        tick.start();
+        dialog.addWindowListener(new java.awt.event.WindowAdapter()
+        {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e)
+            {
+                tick.stop();
+                if (eventDialog == dialog)
+                {
+                    eventDialog = null;
+                }
+            }
+        });
         eventDialog = dialog;
         dialog.setVisible(true);
+    }
+
+    private static String heroText(ClanEvent event)
+    {
+        return event.isHappeningNow() ? "LIVE NOW"
+            : event.isUpcoming() ? "IN " + event.getTimeUntil().toUpperCase()
+            : "ENDED";
     }
 
     private JPanel infoTile(String label, String value)

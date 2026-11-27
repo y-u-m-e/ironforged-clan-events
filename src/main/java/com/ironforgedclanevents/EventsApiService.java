@@ -6,6 +6,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
+import okhttp3.ResponseBody;
+import okhttp3.Callback;
+import okhttp3.Call;
 import okhttp3.Request;
 import okhttp3.Response;
 
@@ -19,6 +22,8 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
+import java.io.IOException;
 
 /**
  * Fetches clan events from the public Iron Forged plugins API
@@ -35,8 +40,8 @@ public class EventsApiService
     /** Replaced wholesale (never mutated) so the EDT and executor can read it without locking. */
     private volatile List<ClanEvent> cachedEvents = Collections.emptyList();
     private volatile long lastFetchTime = 0;
-    /** Last /health answer; reused between polls. Executor only. */
-    private HealthPayload lastHealth;
+    /** Last /health answer; reused between polls. Written by one fetch chain at a time. */
+    private volatile HealthPayload lastHealth;
     private final RefreshBackoff backoff = new RefreshBackoff();
     private volatile ApiStatus apiStatus = ApiStatus.unknown("Enable Load clan events to check API health");
 
@@ -53,17 +58,29 @@ public class EventsApiService
     }
 
     /**
-     * Fetches events from the Iron Forged events API. {@code /health} only colours the status dot, so it is
-     * fetched on the first fetch, on a manual refresh, and after a feed failure rather than on every poll.
-     *
-     * @return true if the feed was fetched; on failure the previous events are kept
+     * Fetches events from the Iron Forged events API on OkHttp's own threads (never the client thread
+     * or RuneLite's shared executor). {@code /health} only colours the status dot, so it is fetched on
+     * the first fetch, on a manual refresh, and after a feed failure rather than on every poll.
+     * {@code done} gets true if the feed was fetched; on failure the previous events are kept.
      */
-    public boolean fetchEvents(boolean manual)
+    public void fetchEvents(boolean manual, Consumer<Boolean> done)
     {
         if (manual || lastHealth == null)
         {
-            lastHealth = fetchHealth();
+            fetchHealth(health ->
+            {
+                lastHealth = health;
+                fetchFeed(done);
+            });
         }
+        else
+        {
+            fetchFeed(done);
+        }
+    }
+
+    private void fetchFeed(Consumer<Boolean> done)
+    {
         String eventsUrl = API_BASE + "/plugins/events";
         log.debug("Fetching events from: {}", eventsUrl);
 
@@ -73,46 +90,72 @@ public class EventsApiService
             .header("Accept", "application/json")
             .build();
 
-        int httpCode = 0;
-        String error;
-        try (Response response = httpClient.newCall(request).execute())
+        httpClient.newCall(request).enqueue(new Callback()
         {
-            httpCode = response.code();
-            okhttp3.ResponseBody responseBody = response.body();
-            if (response.isSuccessful() && responseBody != null)
+            @Override
+            public void onFailure(Call call, IOException e)
             {
-                String body = responseBody.string();
-                String feedCache = parseFeedCache(body);
-                List<ClanEvent> events = parseEventsJson(body);
-                cachedEvents = Collections.unmodifiableList(events);
-                long now = System.currentTimeMillis();
-                lastFetchTime = now;
-                backoff.succeeded(now);
-                apiStatus = buildStatus(lastHealth, true, httpCode, feedCache, events.size());
-                log.debug("Fetched {} events", events.size());
-                return true;
+                feedFailed(0, e.getMessage(), done);
             }
-            error = "HTTP " + httpCode;
-        }
-        catch (Exception e)
-        {
-            error = e.getMessage();
-        }
 
-        lastHealth = fetchHealth();
-        apiStatus = buildStatus(lastHealth, false, httpCode, null, cachedEvents.size());
-        if (backoff.failed(System.currentTimeMillis()))
-        {
-            log.warn("Failed to fetch events API: {}", error);
-        }
-        else
-        {
-            log.debug("Failed to fetch events API again: {}", error);
-        }
-        return false;
+            @Override
+            public void onResponse(Call call, Response response)
+            {
+                int httpCode = response.code();
+                String error = "HTTP " + httpCode;
+                try (Response r = response)
+                {
+                    ResponseBody responseBody = r.body();
+                    if (r.isSuccessful() && responseBody != null)
+                    {
+                        String body = responseBody.string();
+                        String feedCache = parseFeedCache(body);
+                        List<ClanEvent> events = parseEventsJson(body);
+                        cachedEvents = Collections.unmodifiableList(events);
+                        long now = System.currentTimeMillis();
+                        lastFetchTime = now;
+                        backoff.succeeded(now);
+                        apiStatus = buildStatus(lastHealth, true, httpCode, feedCache, events.size());
+                        log.debug("Fetched {} events", events.size());
+                        error = null;
+                    }
+                }
+                catch (Exception e)
+                {
+                    error = e.getMessage();
+                }
+
+                if (error == null)
+                {
+                    done.accept(true);
+                }
+                else
+                {
+                    feedFailed(httpCode, error, done);
+                }
+            }
+        });
     }
 
-    private HealthPayload fetchHealth()
+    private void feedFailed(int httpCode, String error, Consumer<Boolean> done)
+    {
+        fetchHealth(health ->
+        {
+            lastHealth = health;
+            apiStatus = buildStatus(health, false, httpCode, null, cachedEvents.size());
+            if (backoff.failed(System.currentTimeMillis()))
+            {
+                log.warn("Failed to fetch events API: {}", error);
+            }
+            else
+            {
+                log.debug("Failed to fetch events API again: {}", error);
+            }
+            done.accept(false);
+        });
+    }
+
+    private void fetchHealth(Consumer<HealthPayload> done)
     {
         Request request = new Request.Builder()
             .url(API_BASE + "/health")
@@ -120,29 +163,36 @@ public class EventsApiService
             .header("Accept", "application/json")
             .build();
 
-        try (Response response = httpClient.newCall(request).execute())
+        httpClient.newCall(request).enqueue(new Callback()
         {
-            if (!response.isSuccessful() || response.body() == null)
+            @Override
+            public void onFailure(Call call, IOException e)
             {
-                return HealthPayload.failed(response.code());
+                log.debug("Health check failed: {}", e.getMessage());
+                done.accept(HealthPayload.failed(0));
             }
-            JsonObject root = gson.fromJson(response.body().string(), JsonObject.class);
-            if (root == null)
+
+            @Override
+            public void onResponse(Call call, Response response)
             {
-                return HealthPayload.failed(response.code());
+                HealthPayload health;
+                try (Response r = response)
+                {
+                    JsonObject root = r.isSuccessful() && r.body() != null
+                        ? gson.fromJson(r.body().string(), JsonObject.class)
+                        : null;
+                    health = root == null
+                        ? HealthPayload.failed(r.code())
+                        : new HealthPayload(true, r.code(), text(root, "status"), text(root, "version"));
+                }
+                catch (Exception e)
+                {
+                    log.debug("Health check failed: {}", e.getMessage());
+                    health = HealthPayload.failed(0);
+                }
+                done.accept(health);
             }
-            return new HealthPayload(
-                true,
-                response.code(),
-                text(root, "status"),
-                text(root, "version")
-            );
-        }
-        catch (Exception e)
-        {
-            log.debug("Health check failed: {}", e.getMessage());
-            return HealthPayload.failed(0);
-        }
+        });
     }
 
     /** The feed's cache marker ("hit" / "miss"), shown in the health tooltip. */
