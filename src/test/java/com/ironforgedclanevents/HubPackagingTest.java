@@ -64,6 +64,27 @@ public class HubPackagingTest
         }
     }
 
+    /** The Hub packager rejects gradle files with a line over 120 characters; tabs counted as 8 to be safe. */
+    @Test
+    public void gradleFilesWrapAt120() throws IOException
+    {
+        for (String name : new String[]{"build.gradle", "settings.gradle"})
+        {
+            Path file = Paths.get(name);
+            if (!Files.exists(file))
+            {
+                continue;
+            }
+            int n = 0;
+            for (String line : Files.readAllLines(file))
+            {
+                n++;
+                int width = line.replace("	", "        ").length();
+                assertTrue(name + ":" + n + " is " + width + " characters wide", width <= 120);
+            }
+        }
+    }
+
     @Test
     public void thereIsNoServiceLoaderFile()
     {

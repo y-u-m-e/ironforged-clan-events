@@ -51,14 +51,18 @@ tasks.register('runClient', JavaExec) {
 	description = 'Run RuneLite with the plugin'
 	classpath = sourceSets.test.runtimeClasspath
 	mainClass = 'com.ironforgedclanevents.IronforgedClanEventsPluginTest'
-	// Cap the heap like the RuneLite launcher does; uncapped, Java may grow the dev client to a quarter of system RAM.
+	// Cap the heap like the RuneLite launcher does; uncapped, Java may grow
+	// the dev client to a quarter of system RAM.
 	jvmArgs = ['-ea', '-Xmx1g']
 }
 
 tasks.register('shadowJar', Jar) {
 	dependsOn configurations.testRuntimeClasspath
 	manifest {
-		attributes('Main-Class': 'com.ironforgedclanevents.IronforgedClanEventsPluginTest', 'Multi-Release': true)
+		attributes(
+			'Main-Class': 'com.ironforgedclanevents.IronforgedClanEventsPluginTest',
+			'Multi-Release': true
+		)
 	}
 
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
