@@ -15,8 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Movable overlay that draws the Seasonal Event Passphrase
- * (API value when published, else config). It exists so the passphrase shows in
+ * Movable overlay that draws the Seasonal Event Passphrase typed in settings. It exists so the passphrase shows in
  * screenshots posted to the website, as proof they were taken during the event.
  */
 public class SeasonalEventPassphraseOverlay extends OverlayPanel
@@ -28,14 +27,12 @@ public class SeasonalEventPassphraseOverlay extends OverlayPanel
     private static final int SEGMENT_GAP_SPACES = 4;
 
     private final IronforgedClanEventsConfig config;
-    private final SeasonalEventService seasonalEventService;
     // One instance: OverlayPanel clears its children every frame.
     private final WrappedTextComponent text = new WrappedTextComponent();
 
-    public SeasonalEventPassphraseOverlay(IronforgedClanEventsConfig config, SeasonalEventService seasonalEventService)
+    public SeasonalEventPassphraseOverlay(IronforgedClanEventsConfig config)
     {
         this.config = config;
-        this.seasonalEventService = seasonalEventService;
         setPosition(OverlayPosition.TOP_CENTER);
         setMovable(true);
         setSnappable(true);
@@ -50,8 +47,8 @@ public class SeasonalEventPassphraseOverlay extends OverlayPanel
             return null;
         }
 
-        String passphrase = seasonalEventService.resolveEventPassphrase(config);
-        if (passphrase == null || passphrase.isEmpty())
+        String passphrase = config.seasonalEventPassphrase() == null ? "" : config.seasonalEventPassphrase().trim();
+        if (passphrase.isEmpty())
         {
             return null;
         }

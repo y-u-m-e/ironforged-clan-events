@@ -32,7 +32,6 @@ public class EventTeamSyncService
 
     private final IronforgedClanEventsConfig config;
     private final ConfigManager configManager;
-    private final SeasonalEventService seasonalEventService;
     private final OkHttpClient httpClient;
     private final Gson gson;
 
@@ -48,14 +47,12 @@ public class EventTeamSyncService
     EventTeamSyncService(
         IronforgedClanEventsConfig config,
         ConfigManager configManager,
-        SeasonalEventService seasonalEventService,
         OkHttpClient httpClient,
         Gson gson
     )
     {
         this.config = config;
         this.configManager = configManager;
-        this.seasonalEventService = seasonalEventService;
         this.httpClient = httpClient;
         this.gson = gson;
     }
@@ -112,7 +109,13 @@ public class EventTeamSyncService
             return false;
         }
 
-        String eventId = seasonalEventService.resolveEventId(config);
+        // The typed event id is the key: the API returns an empty roster without it, so don't ask.
+        String eventId = config.seasonalEventId() == null ? "" : config.seasonalEventId().trim();
+        if (eventId.isEmpty())
+        {
+            lastStatus = "Enter the Seasonal Event ID to sync teams";
+            return false;
+        }
         String base = EventsApiService.API_BASE + "/plugins/seasonal/teams";
         HttpUrl url = HttpUrl.parse(base);
         if (url == null)
@@ -120,23 +123,13 @@ public class EventTeamSyncService
             lastStatus = "Team sync failed: bad url";
             return false;
         }
-        HttpUrl.Builder urlBuilder = url.newBuilder();
-        if (!eventId.isEmpty())
-        {
-            urlBuilder.addQueryParameter("event_id", eventId);
-        }
+        HttpUrl.Builder urlBuilder = url.newBuilder().addQueryParameter("event_id", eventId);
 
         Request.Builder req = new Request.Builder()
             .url(urlBuilder.build())
             .header("User-Agent", "RuneLite-IronforgedClanEvents")
             .header("Accept", "application/json")
             .get();
-
-        String passphrase = seasonalEventService.resolveEventPassphrase(config);
-        if (!passphrase.isEmpty())
-        {
-            req.header("X-Event-Passphrase", passphrase);
-        }
 
         try (Response response = httpClient.newCall(req.build()).execute())
         {

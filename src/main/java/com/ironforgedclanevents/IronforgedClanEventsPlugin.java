@@ -62,9 +62,6 @@ public class IronforgedClanEventsPlugin extends Plugin
     private EventsApiService eventsApiService;
 
     @Inject
-    private SeasonalEventService seasonalEventService;
-
-    @Inject
     private EventTeamService eventTeamService;
 
     @Inject
@@ -103,7 +100,7 @@ public class IronforgedClanEventsPlugin extends Plugin
         migrateConfigKey(configManager, "refreshInterval");
         migrateConfigKey(configManager, "showOverlay");
 
-        passphraseOverlay = new SeasonalEventPassphraseOverlay(config, seasonalEventService);
+        passphraseOverlay = new SeasonalEventPassphraseOverlay(config);
         overlayManager.add(passphraseOverlay);
         nextEventOverlay = new NextEventOverlay(config, eventsApiService);
         overlayManager.add(nextEventOverlay);
@@ -136,7 +133,6 @@ public class IronforgedClanEventsPlugin extends Plugin
         initialized = true;
         eventTeamService.start();
         refreshEvents();
-        refreshSeasonalEvent();
     }
 
     @Override
@@ -151,7 +147,6 @@ public class IronforgedClanEventsPlugin extends Plugin
         {
             panel.closeEventDialog();
         }
-        seasonalEventService.clear();
         eventsApiService.clearEvents();
         eventTeamSyncService.reset();
         eventTeamService.stop();
@@ -195,10 +190,6 @@ public class IronforgedClanEventsPlugin extends Plugin
         if (eventsApiService.needsRefresh(eventsInterval()))
         {
             refreshEvents();
-        }
-        if (seasonalEventNeeded() && seasonalEventService.needsRefresh(rosterInterval()))
-        {
-            refreshSeasonalEvent();
         }
     }
 
@@ -315,36 +306,20 @@ public class IronforgedClanEventsPlugin extends Plugin
                     p.updateTeamsSyncLabel();
                 }
             }
-            if ("enableTeamRosterSync".equals(key))
+            if ("enableTeamRosterSync".equals(key) && config.enableTeamRosterSync())
             {
-                if (config.enableTeamRosterSync())
-                {
-                    // Queued first on the same executor, so the sync sees the event id and passphrase.
-                    refreshSeasonalEvent();
-                    syncTeams();
-                }
-                else if (!config.showSeasonalEventPassphrase())
-                {
-                    seasonalEventService.clear();
-                }
+                syncTeams();
             }
+        }
+
+        if (key.equals("seasonalEventId") && config.enableTeamRosterSync())
+        {
+            syncTeams();
         }
 
         if (key.equals("enableEventsFeed"))
         {
             refreshEvents();
-        }
-
-        if (key.equals("showSeasonalEventPassphrase"))
-        {
-            if (config.showSeasonalEventPassphrase())
-            {
-                refreshSeasonalEvent();
-            }
-            else if (!config.enableTeamRosterSync())
-            {
-                seasonalEventService.clear();
-            }
         }
 
         if (key.equals("showSidebarButton") && navButton != null)
@@ -397,10 +372,6 @@ public class IronforgedClanEventsPlugin extends Plugin
             return;
         }
 
-        if (seasonalEventNeeded() && seasonalEventService.needsRefresh(rosterInterval()))
-        {
-            refreshSeasonalEvent();
-        }
 
         if (config.enableTeamRosterSync() && eventTeamSyncService.needsRefresh(rosterInterval()))
         {
@@ -475,12 +446,6 @@ public class IronforgedClanEventsPlugin extends Plugin
         });
     }
 
-    /** The overlay shows the passphrase, and roster sync sends the event id and passphrase. */
-    private boolean seasonalEventNeeded()
-    {
-        return config.showSeasonalEventPassphrase() || config.enableTeamRosterSync();
-    }
-
     private int eventsInterval()
     {
         return Math.max(MIN_EVENTS_INTERVAL, config.refreshInterval());
@@ -489,19 +454,6 @@ public class IronforgedClanEventsPlugin extends Plugin
     private int rosterInterval()
     {
         return Math.max(MIN_ROSTER_INTERVAL, config.seasonalCatalogRefreshInterval());
-    }
-
-    /**
-     * Fetches GET /plugins/seasonal: the passphrase for the overlay and the event id for roster sync.
-     */
-    public void refreshSeasonalEvent()
-    {
-        if (!initialized || !seasonalEventNeeded())
-        {
-            return;
-        }
-
-        executorService.submit(seasonalEventService::refresh);
     }
 
     public void syncTeams()

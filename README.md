@@ -8,9 +8,9 @@ A RuneLite plugin for **Iron Forged** clan events: live calendar from `api.ironf
 
 - **Events API** — Fetches from `https://api.ironforged.gg/plugins/events` (sesh-backed, opt-in with RuneLite’s third-party warning)
 - **Side panel timeline** — Day-grouped events with live / today / future / past color tones
-- **Seasonal Event Passphrase** — Optional on-screen passphrase (and optional local date/time), movable and resizable. Prefers the API value; config is fallback.
+- **Seasonal Event Passphrase** — Optional on-screen passphrase you type in settings (and optional local date/time), movable and resizable.
 - **Your team** — The Seasonal tab shows the event, your team and its badge, and which teammates are online
-- **Event teams** — Paste RSNs per team in the Seasonal tab, or opt in to **Sync team roster from API** (`GET /plugins/seasonal/teams`). Rostered players get their team's clan icon in chat, PMs, broadcasts, friends list and clan list
+- **Event teams** — Paste RSNs per team in the Seasonal tab, or opt in to **Sync team roster** (`GET /plugins/seasonal/teams`, needs the Seasonal Event ID). Rostered players get their team's clan icon in chat, PMs, broadcasts, friends list and clan list
 - **Local times** — API timestamps are UTC and shown in your local timezone
 
 ---
@@ -19,24 +19,20 @@ A RuneLite plugin for **Iron Forged** clan events: live calendar from `api.ironf
 
 1. Open RuneLite settings → **Ironforged Clan Events**
 2. Enable **Load clan events** (accept the third-party warning)
-3. Optional: set **Seasonal Event ID** and **Seasonal Event Passphrase** under **Seasonal Event**
-4. Optional: under **Teams**, enable **Sync team roster from API**
+3. Optional: in the same **Iron Forged API** section, enable **Sync team roster** and enter the **Seasonal Event ID**
 
-Three settings contact `https://api.ironforged.gg`, and each sends your IP address to it: **Load clan events**, **Show Seasonal Event Passphrase** and **Sync team roster from API**. All three are off by default.
+Only the **Iron Forged API** section contacts `https://api.ironforged.gg`. Two settings there send your IP address to it, **Load clan events** and **Sync team roster**, and both are off by default.
 
 ---
 
 ## Seasonal Event
 
-Under **Seasonal Event** in settings:
+Under **Overlays** in settings:
 
-- Enter **Seasonal Event ID** (which event team roster sync asks for)
-- Enter **Seasonal Event Passphrase** (overlay text)
-- Toggle **Show Seasonal Event Passphrase** on the game screen
+- Toggle **Show event passphrase** on the game screen
+- Enter **Seasonal Event Passphrase** (the overlay text; nothing is fetched)
 - Optionally show local date & time
 - Drag to reposition; resize freely but not smaller than the text
-
-Config values are used when set; otherwise the plugin falls back to values from the API.
 
 ---
 

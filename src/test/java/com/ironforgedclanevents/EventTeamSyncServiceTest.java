@@ -119,9 +119,14 @@ public class EventTeamSyncServiceTest
             {
                 return true;
             }
+
+            @Override
+            public String seasonalEventId()
+            {
+                return "test-event";
+            }
         };
-        EventTeamSyncService service = new EventTeamSyncService(
-            config, null, new SeasonalEventService(down, new com.google.gson.Gson()), down, new com.google.gson.Gson());
+        EventTeamSyncService service = new EventTeamSyncService(config, null, down, new com.google.gson.Gson());
 
         assertTrue(service.needsRefresh(5));
         assertFalse(service.syncNow());

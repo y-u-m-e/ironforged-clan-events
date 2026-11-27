@@ -9,7 +9,7 @@ import net.runelite.client.config.Range;
 import java.awt.Color;
 
 /**
- * Plugin settings: events feed, passphrase overlay and event teams.
+ * Plugin settings. Every option that contacts the API sits in the Iron Forged API section.
  */
 @ConfigGroup(IronforgedClanEventsConfig.CONFIG_GROUP)
 public interface IronforgedClanEventsConfig extends Config
@@ -17,48 +17,41 @@ public interface IronforgedClanEventsConfig extends Config
     String CONFIG_GROUP = "ironforgedclanevents";
 
     @ConfigSection(
-        name = "Events",
-        description = "Load the Iron Forged clan event calendar",
+        name = "Iron Forged API",
+        description = "Everything that contacts api.ironforged.gg. All off by default",
         position = 0
     )
-    String eventsSection = "eventsSection";
-
-    @ConfigSection(
-        name = "Seasonal Event",
-        description = "Seasonal Event ID and Passphrase overlay",
-        position = 1
-    )
-    String seasonalEventPassphraseSection = "seasonalEventPassphraseSection";
+    String apiSection = "apiSection";
 
     @ConfigSection(
         name = "Panel",
         description = "Configure panel settings",
-        position = 2
+        position = 1
     )
     String panelSection = "panelSection";
 
     @ConfigSection(
         name = "Overlays",
         description = "Boxes drawn on the game screen",
-        position = 3
+        position = 2
     )
     String overlaySection = "overlaySection";
 
     @ConfigSection(
         name = "Teams",
         description = "Colored team badges in chat, and friends/clan lists",
-        position = 4
+        position = 3
     )
     String teamsSection = "teamsSection";
 
-    // ========== Events ==========
+    // ========== Iron Forged API ==========
 
     @ConfigItem(
         keyName = "enableEventsFeed",
         name = "Load clan events",
         description = "Fetch the Iron Forged events calendar from api.ironforged.gg over the internet",
         warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers",
-        section = eventsSection,
+        section = apiSection,
         position = 0
     )
     default boolean enableEventsFeed()
@@ -70,7 +63,7 @@ public interface IronforgedClanEventsConfig extends Config
         keyName = "refreshInterval",
         name = "Refresh Interval (min)",
         description = "How often to refresh event data (in minutes)",
-        section = eventsSection,
+        section = apiSection,
         position = 1
     )
     @Range(min = 5, max = 60)
@@ -79,14 +72,51 @@ public interface IronforgedClanEventsConfig extends Config
         return 15;
     }
 
-    // ========== Seasonal Event ==========
+    @ConfigItem(
+        keyName = "enableTeamRosterSync",
+        name = "Sync team roster",
+        description = "Fetch team names, colors and members from api.ironforged.gg. Needs the Seasonal Event ID. Overwrites local edits in the Seasonal tab when it runs",
+        warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers",
+        section = apiSection,
+        position = 2
+    )
+    default boolean enableTeamRosterSync()
+    {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "seasonalEventId",
+        name = "Seasonal Event ID",
+        description = "The event id staff announce for this season. Team roster sync only returns teams for the current id",
+        section = apiSection,
+        position = 3
+    )
+    default String seasonalEventId()
+    {
+        return "";
+    }
+
+    @ConfigItem(
+        keyName = "seasonalCatalogRefreshInterval",
+        name = "Roster refresh (min)",
+        description = "How often to re-fetch the team roster",
+        section = apiSection,
+        position = 4
+    )
+    @Range(min = 15, max = 60)
+    default int seasonalCatalogRefreshInterval()
+    {
+        return 15;
+    }
+
+    // ========== Overlays ==========
 
     @ConfigItem(
         keyName = "showSeasonalEventPassphrase",
-        name = "Show Seasonal Event Passphrase",
-        description = "Draw the Seasonal Event Passphrase on the game screen (drag to reposition). Fetches the passphrase from api.ironforged.gg",
-        warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers",
-        section = seasonalEventPassphraseSection,
+        name = "Show event passphrase",
+        description = "Draw the Seasonal Event Passphrase you enter below on the game screen (drag to reposition)",
+        section = overlaySection,
         position = 1
     )
     default boolean showSeasonalEventPassphrase()
@@ -95,24 +125,11 @@ public interface IronforgedClanEventsConfig extends Config
     }
 
     @ConfigItem(
-        keyName = "seasonalEventId",
-        name = "Seasonal Event ID",
-        description = "Which seasonal event team roster sync asks for. Used when the API does not publish one, or to override it.",
-        section = seasonalEventPassphraseSection,
-        position = 2
-    )
-    default String seasonalEventId()
-    {
-        return "";
-    }
-
-    @ConfigItem(
         keyName = "seasonalEventPassphrase",
         name = "Seasonal Event Passphrase",
-        description = "Shown on the overlay. Prefer the value from the API when published; this is the fallback / staff-provided passphrase.",
-        secret = true,
-        section = seasonalEventPassphraseSection,
-        position = 3
+        description = "The passphrase staff announce for this season, shown on the passphrase overlay",
+        section = overlaySection,
+        position = 2
     )
     default String seasonalEventPassphrase()
     {
@@ -123,8 +140,8 @@ public interface IronforgedClanEventsConfig extends Config
         keyName = "showSeasonalEventDateTime",
         name = "Show Date & Time",
         description = "Show the current local date and time beside the Seasonal Event Passphrase",
-        section = seasonalEventPassphraseSection,
-        position = 4
+        section = overlaySection,
+        position = 3
     )
     default boolean showSeasonalEventDateTime()
     {
@@ -135,8 +152,8 @@ public interface IronforgedClanEventsConfig extends Config
         keyName = "seasonalEventPassphraseColor",
         name = "Passphrase Color",
         description = "Color of the Seasonal Event Passphrase text",
-        section = seasonalEventPassphraseSection,
-        position = 5
+        section = overlaySection,
+        position = 4
     )
     default Color seasonalEventPassphraseColor()
     {
@@ -147,8 +164,8 @@ public interface IronforgedClanEventsConfig extends Config
         keyName = "seasonalEventDateTimeColor",
         name = "Date & Time Color",
         description = "Color of the date and time text",
-        section = seasonalEventPassphraseSection,
-        position = 6
+        section = overlaySection,
+        position = 5
     )
     default Color seasonalEventDateTimeColor()
     {
@@ -159,8 +176,8 @@ public interface IronforgedClanEventsConfig extends Config
         keyName = "seasonalEventPassphraseBackgroundColor",
         name = "Background Color",
         description = "Background color behind the Seasonal Event Passphrase",
-        section = seasonalEventPassphraseSection,
-        position = 7
+        section = overlaySection,
+        position = 6
     )
     default Color seasonalEventPassphraseBackgroundColor()
     {
@@ -230,32 +247,6 @@ public interface IronforgedClanEventsConfig extends Config
     default boolean enableTeamIcons()
     {
         return true;
-    }
-
-    @ConfigItem(
-        keyName = "enableTeamRosterSync",
-        name = "Sync team roster from API",
-        description = "Fetch team names/colors/members from api.ironforged.gg (GET /plugins/seasonal/teams). Overwrites local Teams tab edits when sync runs.",
-        warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers",
-        section = teamsSection,
-        position = 1
-    )
-    default boolean enableTeamRosterSync()
-    {
-        return false;
-    }
-
-    @ConfigItem(
-        keyName = "seasonalCatalogRefreshInterval",
-        name = "Roster refresh (min)",
-        description = "How often to re-fetch the team roster and event passphrase from the API",
-        section = teamsSection,
-        position = 2
-    )
-    @Range(min = 15, max = 60)
-    default int seasonalCatalogRefreshInterval()
-    {
-        return 15;
     }
 
     @ConfigItem(

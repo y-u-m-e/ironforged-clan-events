@@ -333,7 +333,7 @@ public class IronforgedClanEventsPanel extends PluginPanel
         int myTeam = findMyTeam(status.localName, teamCount);
         if (!anyRoster)
         {
-            myTeamTitleLabel.setText("<html>No team roster yet. Turn on Sync team roster from API in plugin config.</html>");
+            myTeamTitleLabel.setText("<html>No team roster yet. Turn on Sync team roster and enter the Seasonal Event ID in plugin config.</html>");
         }
         else if (status.localName.isEmpty())
         {
