@@ -99,8 +99,8 @@ public class NextEventOverlayTest
         ClanEvent next = event("Bingo Night", 74, 60);
         List<String> lines = texts(NextEventOverlay.buildCompactSegments(live, next));
         assertEquals(2, lines.size());
-        assertEquals("Raids \u00b7 now", lines.get(0));
-        assertTrue(lines.get(1), lines.get(1).matches("Bingo Night \u00b7 in 1h 1[34]m"));
+        assertEquals("Raids - now", lines.get(0));
+        assertTrue(lines.get(1), lines.get(1).matches("Bingo Night - in 1h 1[34]m"));
         assertTrue(NextEventOverlay.buildCompactSegments(null, null).isEmpty());
     }
 }

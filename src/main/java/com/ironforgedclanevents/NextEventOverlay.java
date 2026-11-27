@@ -33,6 +33,8 @@ public class NextEventOverlay extends OverlayPanel
     private final WrappedTextComponent text = new WrappedTextComponent();
     private List<WrappedText.Segment> segments = new ArrayList<>();
     private long builtAt;
+    private boolean builtSpotlights;
+    private IronforgedClanEventsConfig.NextEventStyle builtStyle;
 
     public NextEventOverlay(IronforgedClanEventsConfig config, EventsApiService eventsApiService)
     {
@@ -72,18 +74,18 @@ public class NextEventOverlay extends OverlayPanel
         return best;
     }
 
-    /** Compact: one line per event, "Name · now" and "Name · in 1h 5m". */
+    /** Compact: one line per event, "Name - now" and "Name - in 1h 5m". */
     static List<WrappedText.Segment> buildCompactSegments(ClanEvent live, ClanEvent next)
     {
         List<WrappedText.Segment> out = new ArrayList<>();
         if (live != null)
         {
-            out.add(new WrappedText.Segment(displayName(live) + " · now", ACTIVE));
+            out.add(new WrappedText.Segment(displayName(live) + " - now", ACTIVE));
         }
         if (next != null)
         {
             Color color = next.isImminent() ? IMMINENT : ACCENT;
-            out.add(new WrappedText.Segment(displayName(next) + " · in " + next.getTimeUntil(), color));
+            out.add(new WrappedText.Segment(displayName(next) + " - in " + next.getTimeUntil(), color));
         }
         return out;
     }
@@ -130,15 +132,19 @@ public class NextEventOverlay extends OverlayPanel
         }
 
         // The countdown is minute-granular; rebuilding once a second keeps the frame cheap.
+        // A settings change rebuilds at once so switching style or SOTW/BOTW feels instant.
         long now = System.currentTimeMillis();
-        if (now - builtAt >= REBUILD_MS)
+        boolean spotlights = config.nextEventShowSpotlights();
+        IronforgedClanEventsConfig.NextEventStyle style = config.nextEventStyle();
+        if (now - builtAt >= REBUILD_MS || spotlights != builtSpotlights || style != builtStyle)
         {
             builtAt = now;
+            builtSpotlights = spotlights;
+            builtStyle = style;
             List<ClanEvent> events = eventsApiService.getCachedEvents();
-            boolean spotlights = config.nextEventShowSpotlights();
             ClanEvent live = pickLive(events, spotlights);
             ClanEvent next = pickNext(events, spotlights);
-            segments = config.nextEventStyle() == IronforgedClanEventsConfig.NextEventStyle.COMPACT
+            segments = style == IronforgedClanEventsConfig.NextEventStyle.COMPACT
                 ? buildCompactSegments(live, next)
                 : buildSegments(live, next);
         }
