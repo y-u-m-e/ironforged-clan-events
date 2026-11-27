@@ -2,7 +2,7 @@
 
 A RuneLite plugin for **Iron Forged** clan events: the clan calendar in a side panel, a next-event box on the game screen, your seasonal team, an optional event passphrase box, and team badges for the seasonal event.
 
-Formerly **Clan Event List**. If you had that installed, install this one; your settings carry over.
+Formerly **Clan Event List**. If you had that installed, it updates in place; your settings carry over.
 
 ---
 
