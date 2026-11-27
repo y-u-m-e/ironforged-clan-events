@@ -472,21 +472,22 @@ public class IronforgedClanEventsPanel extends PluginPanel
         JPanel syncRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         syncRow.setOpaque(false);
         syncRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        syncRow.add(createPanelButton("Sync teams", "Fetch roster from GET /plugins/seasonal/teams", e ->
+        syncRow.add(createPanelButton("Sync teams", "Fetch the team roster from the Iron Forged API now", e ->
         {
             if (syncTeamsCallback != null)
             {
                 syncTeamsCallback.run();
             }
         }));
-        body.add(syncRow);
+        // Sync button and status stay visible under the header even while the section is collapsed.
+        section.add(syncRow, 1);
 
         teamsSyncLabel = new JLabel(" ");
         teamsSyncLabel.setFont(FontManager.getRunescapeSmallFont());
         teamsSyncLabel.setForeground(SECONDARY_TEXT);
         teamsSyncLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         teamsSyncLabel.setBorder(new EmptyBorder(2, 0, 2, 0));
-        body.add(teamsSyncLabel);
+        section.add(teamsSyncLabel, 2);
 
         teamsConflictLabel = new JLabel(" ");
         teamsConflictLabel.setFont(FontManager.getRunescapeSmallFont());
