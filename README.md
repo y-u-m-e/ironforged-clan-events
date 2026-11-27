@@ -1,47 +1,45 @@
 # Ironforged Clan Events
 
-A RuneLite plugin for **Iron Forged** clan events: live calendar from `api.ironforged.gg`, side panel timeline, your seasonal team, optional Seasonal Event Passphrase overlay, and event team badges.
+A RuneLite plugin for **Iron Forged** clan events: the clan calendar in a side panel, a next-event box on the game screen, your seasonal team, an optional event passphrase box, and team badges for the seasonal event.
+
+Formerly **Clan Event List**. If you had that installed, install this one; your settings carry over.
 
 ---
 
 ## Features
 
-- **Events API** — Fetches from `https://api.ironforged.gg/plugins/events` (sesh-backed, opt-in with RuneLite’s third-party warning)
-- **Side panel timeline** — Day-grouped events with live / today / future / past color tones
-- **Seasonal Event Passphrase** — Optional on-screen passphrase you type in settings (and optional local date/time), movable and resizable.
-- **Your team** — The Seasonal tab shows the event, your team and its badge, and which teammates are online
-- **Event teams** — Paste RSNs per team in the Seasonal tab, or opt in to **Sync team roster** (`GET /plugins/seasonal/teams`, needs the Seasonal Event ID). Rostered players get their team's clan icon in chat, PMs, broadcasts, friends list and clan list
-- **Local times** — API timestamps are UTC and shown in your local timezone
+- **Events panel**: the clan calendar grouped by day, in your local time. Upcoming events are coloured by type (PvM, skilling, minigame, wildy, social). Click an event for a details window with a countdown, host, location, description and link.
+- **Next event box**: the next event and the one running now, on the game screen. **Verbose** shows title, name and countdown on separate lines; **Compact** fits each event on one line. Skill and Boss of the Week can be left out. Drag to move, resize to wrap.
+- **Your team**: the Seasonal tab shows the event, your team and its badge, and which teammates are online.
+- **Team badges**: rostered players get their team's coloured clan icon in chat, private messages, broadcasts, and the friends and clan lists. Paste names per team in the Seasonal tab, or turn on **Sync team roster** and press **Sync teams** to fetch the roster staff publish.
+- **Event passphrase box**: shows the passphrase you type in settings, with an optional date and time, so it appears in screenshots for event submissions.
 
 ---
 
 ## Setup
 
-1. Open RuneLite settings → **Ironforged Clan Events**
-2. Enable **Load clan events** (accept the third-party warning)
-3. Optional: in the same **Iron Forged API** section, enable **Sync team roster** and enter the **Seasonal Event ID**
+1. Open RuneLite settings, then **Ironforged Clan Events**.
+2. Under **Iron Forged API**, turn on **Load clan events** and accept the warning.
+3. Optional: in the same section, turn on **Sync team roster** and enter the **Seasonal Event ID** staff announce.
 
-Only the **Iron Forged API** section contacts `https://api.ironforged.gg`. Two settings there send your IP address to it, **Load clan events** and **Sync team roster**, and both are off by default.
+Only the **Iron Forged API** section contacts `https://api.ironforged.gg`. Its two switches, **Load clan events** and **Sync team roster**, send your IP address to it, and both are off by default. Nothing else in the plugin uses the network.
 
 ---
 
-## Seasonal Event
+## Overlays
 
 Under **Overlays** in settings:
 
-- Toggle **Show event passphrase** on the game screen
-- Enter **Seasonal Event Passphrase** (the overlay text; nothing is fetched)
-- Optionally show local date & time
-- Drag to reposition; resize freely but not smaller than the text
+- **Show next event overlay**, **Next event style** (Compact or Verbose) and **Show SOTW/BOTW**. Needs **Load clan events**.
+- **Show event passphrase** and the **Seasonal Event Passphrase** text. Nothing is fetched. Optional local date and time, and colours for each.
+
+Drag either box to move it; resize it and the text wraps.
 
 ---
 
 ## Development
 
-See [AGENTS.md](./AGENTS.md) for RuneLite Plugin Hub rules this project follows.
-
-Cross-repo team roster contract for the webpage/API team:  
-[`docs/plans/PLUGIN_TEAM_ROSTER_SYNC.md`](../../docs/plans/PLUGIN_TEAM_ROSTER_SYNC.md) (workspace).
+See [AGENTS.md](./AGENTS.md) for the RuneLite Plugin Hub rules this project follows.
 
 ```bash
 ./gradlew.bat runClient
