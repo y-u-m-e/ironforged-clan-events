@@ -1433,7 +1433,10 @@ public class IronforgedClanEventsPanel extends PluginPanel
         boolean isHappening = isLive || event.isHappeningNow();
         boolean isImminent = !past && event.isImminent();
         EventTone tone = eventTone(event, isLive, past);
-        Color accent = toneColor(tone, toneVariant);
+        // Upcoming events are coloured by type; live and past keep their state colour.
+        Color accent = tone == EventTone.TODAY || tone == EventTone.FUTURE
+            ? EventCategory.of(event.getName()).color
+            : toneColor(tone, toneVariant);
 
         int width = contentWidth();
         JPanel row = new JPanel(new BorderLayout(4, 0));
