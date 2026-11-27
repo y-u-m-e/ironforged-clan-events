@@ -6,6 +6,7 @@ import net.runelite.client.ui.overlay.components.ComponentConstants;
 import ws.yume.toolkit.overlay.WrappedText;
 import ws.yume.toolkit.overlay.WrappedTextComponent;
 
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
@@ -29,6 +30,13 @@ public class SeasonalEventPassphraseOverlay extends OverlayPanel
     private final IronforgedClanEventsConfig config;
     // One instance: OverlayPanel clears its children every frame.
     private final WrappedTextComponent text = new WrappedTextComponent();
+    private List<WrappedText.Segment> segments = new ArrayList<>();
+    private String builtPassphrase = "";
+    private Color builtColor;
+    private Color builtDateColor;
+    private boolean builtShowDate;
+    private long builtAt;
+    private int oneLineWidth = -1;
 
     public SeasonalEventPassphraseOverlay(IronforgedClanEventsConfig config)
     {
@@ -53,12 +61,26 @@ public class SeasonalEventPassphraseOverlay extends OverlayPanel
             return null;
         }
 
-        List<WrappedText.Segment> segments = new ArrayList<>();
-        segments.add(new WrappedText.Segment(passphrase, config.seasonalEventPassphraseColor()));
-        if (config.showSeasonalEventDateTime())
+        // Rebuild only when a setting changed, or once a second for the minute-granular clock.
+        boolean showDate = config.showSeasonalEventDateTime();
+        Color color = config.seasonalEventPassphraseColor();
+        Color dateColor = config.seasonalEventDateTimeColor();
+        long now = System.currentTimeMillis();
+        if (!passphrase.equals(builtPassphrase) || !color.equals(builtColor) || !dateColor.equals(builtDateColor)
+            || showDate != builtShowDate || (showDate && now - builtAt >= 1000))
         {
-            segments.add(new WrappedText.Segment(
-                LocalDateTime.now().format(DATE_TIME_FORMAT), config.seasonalEventDateTimeColor()));
+            builtPassphrase = passphrase;
+            builtColor = color;
+            builtDateColor = dateColor;
+            builtShowDate = showDate;
+            builtAt = now;
+            segments = new ArrayList<>();
+            segments.add(new WrappedText.Segment(passphrase, color));
+            if (showDate)
+            {
+                segments.add(new WrappedText.Segment(LocalDateTime.now().format(DATE_TIME_FORMAT), dateColor));
+            }
+            oneLineWidth = -1;
         }
         text.setSegments(segments);
 
@@ -73,11 +95,14 @@ public class SeasonalEventPassphraseOverlay extends OverlayPanel
         // by "Reset"); OverlayPanel then applies it. Otherwise show everything on one line.
         if (getPreferredSize() == null)
         {
-            FontMetrics metrics = graphics.getFontMetrics();
-            int oneLine = WrappedText.layout(segments, metrics::stringWidth, metrics.getHeight(),
-                Integer.MAX_VALUE, SEGMENT_GAP_SPACES * metrics.stringWidth(" ")).contentWidth();
+            if (oneLineWidth < 0)
+            {
+                FontMetrics metrics = graphics.getFontMetrics();
+                oneLineWidth = WrappedText.layout(segments, metrics::stringWidth, metrics.getHeight(),
+                    Integer.MAX_VALUE, SEGMENT_GAP_SPACES * metrics.stringWidth(" ")).contentWidth();
+            }
             panelComponent.setPreferredSize(new Dimension(
-                oneLine + 2 * ComponentConstants.STANDARD_BORDER, 0));
+                oneLineWidth + 2 * ComponentConstants.STANDARD_BORDER, 0));
         }
 
         return super.render(graphics);
