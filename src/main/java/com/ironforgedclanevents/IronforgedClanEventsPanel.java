@@ -1624,36 +1624,67 @@ public class IronforgedClanEventsPanel extends PluginPanel
         JDialog dialog = new JDialog(owner, plainLabelText(name), Dialog.ModalityType.MODELESS);
         dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 
-        JPanel content = new JPanel();
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBackground(BACKGROUND_COLOR);
-        content.setBorder(new EmptyBorder(12, 14, 12, 14));
+        // The hero is the one thing the list row can't show at a glance: how long until it starts.
+        String hero = event.isHappeningNow() ? "LIVE NOW"
+            : event.isUpcoming() ? "IN " + event.getTimeUntil().toUpperCase()
+            : "ENDED";
+        String time = event.isWeeklySpotlight() ? "All week" : event.getTimeRange();
+
+        // Header band: event colour bar on top, a dark tint of it behind the text.
+        JPanel band = new JPanel();
+        band.setLayout(new BoxLayout(band, BoxLayout.Y_AXIS));
+        band.setBackground(blend(accent, BACKGROUND_COLOR, 0.22f));
+        band.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(4, 0, 0, 0, accent),
+            new EmptyBorder(12, 14, 12, 14)));
+
+        JLabel heroLabel = new JLabel(plainLabelText(hero));
+        heroLabel.setFont(FontManager.getRunescapeBoldFont().deriveFont(24f));
+        heroLabel.setForeground(accent);
+        heroLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        band.add(heroLabel);
+        band.add(Box.createVerticalStrut(2));
 
         JLabel title = new JLabel("<html><body style='width:" + DIALOG_TEXT_WIDTH + "px'>"
             + escapeHtml(name) + "</body></html>");
-        title.setFont(FontManager.getRunescapeBoldFont());
-        title.setForeground(accent);
+        title.setFont(FontManager.getRunescapeBoldFont().deriveFont(16f));
+        title.setForeground(TEXT_COLOR);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
-        content.add(title);
-        content.add(Box.createVerticalStrut(4));
+        band.add(title);
+        band.add(Box.createVerticalStrut(6));
 
-        JLabel when = detailLine(plainLabelText(event.getDayBlockHeader()));
-        when.setForeground(TEXT_COLOR);
-        content.add(when);
-        content.add(detailLine(plainLabelText(event.getTimelineMetaLine())));
+        JLabel day = detailLine(plainLabelText(event.getDayBlockHeader()));
+        day.setForeground(TEXT_COLOR);
+        band.add(day);
+        band.add(detailLine(plainLabelText(time)));
 
-        if (event.getHost() != null && !event.getHost().trim().isEmpty())
+        JPanel body = new JPanel();
+        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+        body.setBackground(BACKGROUND_COLOR);
+        body.setBorder(new EmptyBorder(10, 14, 12, 14));
+
+        String host = event.getHost() == null ? "" : event.getHost().trim();
+        String where = event.getLocation() == null ? "" : event.getLocation().trim();
+        if (!host.isEmpty() || !where.isEmpty())
         {
-            content.add(detailLine(plainLabelText("Host  " + event.getHost().trim())));
-        }
-        if (event.getLocation() != null && !event.getLocation().trim().isEmpty())
-        {
-            content.add(detailLine(plainLabelText("At  " + event.getLocation().trim())));
+            JPanel tiles = new JPanel(new GridLayout(1, 0, 6, 0));
+            tiles.setOpaque(false);
+            tiles.setAlignmentX(Component.LEFT_ALIGNMENT);
+            if (!host.isEmpty())
+            {
+                tiles.add(infoTile("HOST", host));
+            }
+            if (!where.isEmpty())
+            {
+                tiles.add(infoTile("WHERE", where));
+            }
+            tiles.setMaximumSize(new Dimension(Integer.MAX_VALUE, tiles.getPreferredSize().height));
+            body.add(tiles);
         }
 
         if (event.getDescription() != null && !event.getDescription().trim().isEmpty())
         {
-            content.add(Box.createVerticalStrut(8));
+            body.add(Box.createVerticalStrut(8));
             JTextArea desc = new JTextArea(event.getDescription().trim());
             desc.setEditable(false);
             desc.setLineWrap(true);
@@ -1661,14 +1692,19 @@ public class IronforgedClanEventsPanel extends PluginPanel
             desc.setFont(FontManager.getRunescapeSmallFont());
             desc.setForeground(SECONDARY_TEXT);
             desc.setBackground(PANEL_COLOR);
-            desc.setBorder(new EmptyBorder(6, 8, 6, 8));
+            desc.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 3, 0, 0, accent),
+                new EmptyBorder(6, 8, 6, 8)));
             desc.setCaretPosition(0);
+            // Size the box to the text, up to a cap; longer descriptions scroll.
+            desc.setSize(new Dimension(DIALOG_TEXT_WIDTH, Short.MAX_VALUE));
+            int descHeight = Math.min(180, desc.getPreferredSize().height);
             JScrollPane descScroll = new JScrollPane(desc);
             descScroll.setBorder(BorderFactory.createEmptyBorder());
             descScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
             descScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
-            descScroll.setPreferredSize(new Dimension(DIALOG_TEXT_WIDTH, 160));
-            content.add(descScroll);
+            descScroll.setPreferredSize(new Dimension(DIALOG_TEXT_WIDTH, descHeight));
+            body.add(descScroll);
         }
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
@@ -1676,12 +1712,16 @@ public class IronforgedClanEventsPanel extends PluginPanel
         buttons.setAlignmentX(Component.LEFT_ALIGNMENT);
         if (event.hasUrl())
         {
-            buttons.add(createPanelButton("Open link", "Open the event link in your browser",
-                e -> LinkBrowser.browse(event.getUrl().trim())));
+            buttons.add(accentButton("Open link", accent, () -> LinkBrowser.browse(event.getUrl().trim())));
         }
         buttons.add(createPanelButton("Close", null, e -> dialog.dispose()));
-        content.add(Box.createVerticalStrut(10));
-        content.add(buttons);
+        body.add(Box.createVerticalStrut(12));
+        body.add(buttons);
+
+        JPanel content = new JPanel(new BorderLayout());
+        content.setBackground(BACKGROUND_COLOR);
+        content.add(band, BorderLayout.NORTH);
+        content.add(body, BorderLayout.CENTER);
 
         dialog.getRootPane().registerKeyboardAction(e -> dialog.dispose(),
             KeyStroke.getKeyStroke("ESCAPE"), JComponent.WHEN_IN_FOCUSED_WINDOW);
@@ -1691,6 +1731,63 @@ public class IronforgedClanEventsPanel extends PluginPanel
         dialog.setLocationRelativeTo(this);
         eventDialog = dialog;
         dialog.setVisible(true);
+    }
+
+    private JPanel infoTile(String label, String value)
+    {
+        JPanel tile = new JPanel();
+        tile.setLayout(new BoxLayout(tile, BoxLayout.Y_AXIS));
+        tile.setBackground(PANEL_COLOR);
+        tile.setBorder(new EmptyBorder(6, 8, 6, 8));
+        JLabel l = new JLabel(label);
+        l.setFont(FontManager.getRunescapeSmallFont());
+        l.setForeground(MUTED_TEXT);
+        // Two tiles share ~280px; clip long values (full text on hover) so the window doesn't widen.
+        JLabel v = new JLabel(plainLabelText(value.length() > 20 ? value.substring(0, 19) + "…" : value));
+        v.setFont(FontManager.getRunescapeFont());
+        v.setForeground(TEXT_COLOR);
+        v.setToolTipText(plainLabelText(value));
+        tile.add(l);
+        tile.add(v);
+        return tile;
+    }
+
+    private JButton accentButton(String label, Color accent, Runnable action)
+    {
+        Color base = blend(accent, BACKGROUND_COLOR, 0.55f);
+        Color hover = blend(accent, BACKGROUND_COLOR, 0.75f);
+        JButton button = new JButton(label);
+        button.setFont(FontManager.getRunescapeSmallFont());
+        button.setForeground(TEXT_COLOR);
+        button.setBackground(base);
+        button.setBorder(new EmptyBorder(4, 10, 4, 10));
+        button.setFocusPainted(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.addActionListener(e -> action.run());
+        button.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                button.setBackground(hover);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                button.setBackground(base);
+            }
+        });
+        return button;
+    }
+
+    /** {@code amount} of {@code top} over {@code bottom}, opaque. */
+    private static Color blend(Color top, Color bottom, float amount)
+    {
+        return new Color(
+            Math.round(top.getRed() * amount + bottom.getRed() * (1 - amount)),
+            Math.round(top.getGreen() * amount + bottom.getGreen() * (1 - amount)),
+            Math.round(top.getBlue() * amount + bottom.getBlue() * (1 - amount)));
     }
 
     /** Closes the event details window, if open. Safe to call from any thread. */
